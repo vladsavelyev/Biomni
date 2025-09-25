@@ -55,6 +55,7 @@ RUN /opt/conda/envs/biomni_e1/bin/pip install torch==2.8.0 gget==0.29.2 PyPDF2==
 COPY mcp_biomni/ /app/mcp_biomni/
 COPY pyproject.toml /app/
 COPY README.md /app/
+COPY blacklist.yaml /app/
 
 # Install mcp_biomni package
 WORKDIR /app

@@ -4,6 +4,19 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_biomni.server.blacklist_config import BlacklistConfig
+
+
+@pytest.fixture
+def mock_blacklist_config():
+    """Mock blacklist configuration for testing."""
+    config = Mock(spec=BlacklistConfig)
+    config.is_tool_blocked.return_value = False
+    config.is_file_blocked.return_value = False
+    config.is_capability_blocked.return_value = False
+    config.is_module_blocked.return_value = False
+    return config
+
 
 @pytest.fixture
 def mock_biomni_module():

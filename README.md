@@ -213,6 +213,73 @@ Each service endpoint provides:
            └── hle/
    ```
 
+### Blacklisting Configuration
+
+MCP Biomni supports a flexible blacklisting system to exclude specific tools, files, and capabilities from being exposed via the MCP server. This is useful for controlling access, reducing server load, or complying with usage policies.
+
+#### Configuration File
+
+Create a `blacklist.yaml` file in the project root to define items to exclude:
+
+```yaml
+# MCP Biomni Blacklist Configuration
+# This file defines items to exclude from MCP server exposure
+
+# Tools to blacklist (exact tool names)
+tools:
+  - query_kegg
+  - query_iucn
+
+# Files/resources to blacklist (relative paths in data lake)
+files:
+  - DepMap_CRISPRGeneDependency.csv
+  - DepMap_CRISPRGeneEffect.csv
+  - DepMap_Model.csv
+  - DepMap_OmicsExpressionProteinCodingGenesTPMLogp1.csv
+
+# Capabilities to blacklist by category
+capabilities:
+  python_packages:
+    - cryosparc-tools
+    - cellpose
+  cli_tools:
+    - Homer
+
+# Modules to blacklist (entire tool modules)
+modules:
+  - experimental_module
+```
+
+#### Blacklist Categories
+
+**Tools**: Individual function names from any Biomni module that should not be exposed as MCP tools.
+
+**Files**: Data lake files (relative paths) that should not be accessible via the `file_access` tool.
+
+**Capabilities**: Specific packages or tools categorized by type:
+
+- `python_packages`: Python packages excluded from the `tool_capabilities` catalog
+- `r_packages`: R packages excluded from the catalog
+- `cli_tools`: Command-line tools excluded from the catalog
+
+**Modules**: Entire Biomni modules to exclude from the server (e.g., `biochemistry`, `genetics`).
+
+#### How It Works
+
+1. **Startup**: The blacklist configuration is loaded when each server process starts
+2. **Tool Registration**: Tools listed in the blacklist are skipped during MCP tool registration
+3. **File Access**: Blacklisted files return access denied errors when requested
+4. **Capabilities**: The `tool_capabilities` tool excludes blacklisted packages from its catalog
+5. **Module Filtering**: Entire modules are excluded from the available modules list
+
+**Server logs will show when items are blacklisted:**
+
+```text
+✗ [database] query_kegg: blacklisted
+✓ [database] query_uniprot: registered
+Loaded blacklist config from: /app/blacklist.yaml
+```
+
 ### Multi-Process Architecture
 
 The MCP-Biomni server uses a multi-process architecture:

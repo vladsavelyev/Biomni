@@ -14,6 +14,7 @@ from fastmcp.server.middleware.timing import TimingMiddleware
 
 from biomni.env_desc import data_lake_dict, library_content_dict
 from mcp_biomni.scripts.check_and_download_files import setup_biomni_data_environment
+from mcp_biomni.server.blacklist_config import load_blacklist_config
 
 # --------------------
 # Helpers
@@ -77,7 +78,7 @@ class FileMeta:
     mime: str
 
 
-def build_file_index(base_path: Path | None) -> dict[str, FileMeta]:
+def build_file_index(base_path: Path | None, blacklist_config) -> dict[str, FileMeta]:
     """Build index of available data files following Biomni's directory structure."""
     index: dict[str, FileMeta] = {}
     if not base_path or not base_path.exists() or not base_path.is_dir():
@@ -89,13 +90,16 @@ def build_file_index(base_path: Path | None) -> dict[str, FileMeta]:
         return index
 
     for rel, desc in data_lake_dict.items():
+        # Skip blacklisted files
+        if blacklist_config.is_file_blocked(rel):
+            continue
         p = data_lake_path / rel
         if p.exists() and p.is_file():
             index[rel] = FileMeta(path=p, desc=desc, mime=guess_mime(p))
     return index
 
 
-def parse_library_content() -> dict[str, dict]:
+def parse_library_content(blacklist_config) -> dict[str, dict]:
     """Parse library_content_dict into structured categories."""
     python_packages = {}
     r_packages = {}
@@ -120,6 +124,9 @@ def parse_library_content() -> dict[str, dict]:
     for name, description in library_content_dict.items():
         # Extract the package type from the description
         if "[Python Package]" in description:
+            # Skip blacklisted Python packages
+            if blacklist_config.is_capability_blocked("python_packages", name):
+                continue
             # Clean description and extract import info
             clean_desc = description.replace("[Python Package] ", "")
             import_name = import_name_mapping.get(name, name)
@@ -131,6 +138,9 @@ def parse_library_content() -> dict[str, dict]:
                 "type": "python_package",
             }
         elif "[R Package]" in description:
+            # Skip blacklisted R packages
+            if blacklist_config.is_capability_blocked("r_packages", name):
+                continue
             # Extract subprocess usage info
             clean_desc = description.replace("[R Package] ", "")
             r_packages[name] = {
@@ -141,6 +151,9 @@ def parse_library_content() -> dict[str, dict]:
                 "type": "r_package",
             }
         elif "[CLI Tool]" in description:
+            # Skip blacklisted CLI tools
+            if blacklist_config.is_capability_blocked("cli_tools", name):
+                continue
             # Extract CLI usage info
             clean_desc = description.replace("[CLI Tool] ", "")
             cli_tools[name] = {
@@ -151,6 +164,9 @@ def parse_library_content() -> dict[str, dict]:
                 "type": "cli_tool",
             }
         else:
+            # Skip blacklisted CLI tools (default type)
+            if blacklist_config.is_capability_blocked("cli_tools", name):
+                continue
             # Handle packages without explicit type markers (assume CLI tools)
             cli_tools[name] = {
                 "executable": name,
@@ -170,6 +186,9 @@ def parse_library_content() -> dict[str, dict]:
 def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
     """Start one FastMCP server that exposes data lake files as tools."""
     try:
+        # Load blacklist configuration
+        blacklist_config = load_blacklist_config()
+
         # Setup and download missing data files first
         print("[resources] Setting up BIOMNI data environment...")
         setup_biomni_data_environment()
@@ -177,7 +196,7 @@ def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
         base = os.environ.get("BIOMNI_DATA_PATH")
         base_path = Path(base).resolve() if base else None
 
-        file_index = build_file_index(base_path)
+        file_index = build_file_index(base_path, blacklist_config)
 
         if not file_index:
             print(
@@ -193,7 +212,7 @@ def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
         mcp.add_middleware(TimingMiddleware())
 
         # Parse library content for capabilities tool
-        capabilities = parse_library_content()
+        capabilities = parse_library_content(blacklist_config)
 
         # Register tool_capabilities tool
         @mcp.tool(
@@ -358,6 +377,16 @@ def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
             if chosen_op not in {"describe", "read"}:
                 return f"Unsupported op '{op}'. Use 'describe' or 'read'."
 
+            # Check if file is blacklisted
+            if blacklist_config.is_file_blocked(file_path):
+                return json.dumps(
+                    {
+                        "error": f"Access denied: File '{file_path}' is blacklisted",
+                        "suggestion": "Use file_catalog tool to see available files",
+                    },
+                    indent=2,
+                )
+
             if file_path not in file_index:
                 available_files = list(file_index.keys())[
                     :10
@@ -425,8 +454,11 @@ def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
 
 def get_available_resources() -> list[str]:
     """Get list of available data lake files."""
+    # Load blacklist configuration
+    blacklist_config = load_blacklist_config()
+
     base = os.environ.get("BIOMNI_DATA_PATH")
     base_path = Path(base).resolve() if base else None
 
-    file_index = build_file_index(base_path)
+    file_index = build_file_index(base_path, blacklist_config)
     return list(file_index.keys())

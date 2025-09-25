@@ -163,7 +163,7 @@ class TestBuildFileIndex:
             "missing_file.csv": "Missing file description",
         },
     )
-    def test_build_file_index_with_existing_files(self):
+    def test_build_file_index_with_existing_files(self, mock_blacklist_config):
         """Test building file index with existing files."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             base_path = Path(tmp_dir)
@@ -174,21 +174,21 @@ class TestBuildFileIndex:
             test_file = data_lake_path / "test_file.parquet"
             test_file.write_bytes(b"test data")
 
-            index = build_file_index(base_path)
+            index = build_file_index(base_path, mock_blacklist_config)
 
             assert len(index) == 1
             assert "test_file.parquet" in index
             assert index["test_file.parquet"].desc == "Test file description"
             assert index["test_file.parquet"].mime == "application/vnd.apache.parquet"
 
-    def test_build_file_index_nonexistent_base_path(self):
+    def test_build_file_index_nonexistent_base_path(self, mock_blacklist_config):
         """Test building file index with nonexistent base path."""
-        index = build_file_index(Path("/nonexistent/path"))
+        index = build_file_index(Path("/nonexistent/path"), mock_blacklist_config)
         assert index == {}
 
-    def test_build_file_index_none_base_path(self):
+    def test_build_file_index_none_base_path(self, mock_blacklist_config):
         """Test building file index with None base path."""
-        index = build_file_index(None)
+        index = build_file_index(None, mock_blacklist_config)
         assert index == {}
 
 
@@ -204,9 +204,9 @@ class TestParseLibraryContent:
             "mystery_tool": "A mysterious tool without explicit type markers.",
         },
     )
-    def test_parse_library_content_all_types(self):
+    def test_parse_library_content_all_types(self, mock_blacklist_config):
         """Test parsing library content with all package types."""
-        result = parse_library_content()
+        result = parse_library_content(mock_blacklist_config)
 
         # Check structure
         assert "python_packages" in result
@@ -254,9 +254,9 @@ class TestParseLibraryContent:
             "opencv-python": "[Python Package] Computer vision library.",
         },
     )
-    def test_parse_library_content_import_name_mapping(self):
+    def test_parse_library_content_import_name_mapping(self, mock_blacklist_config):
         """Test that special import name mappings work correctly."""
-        result = parse_library_content()
+        result = parse_library_content(mock_blacklist_config)
 
         # Test scikit-learn -> sklearn mapping
         sklearn_pkg = result["python_packages"]["scikit-learn"]
@@ -272,31 +272,42 @@ class TestParseLibraryContent:
 class TestGetAvailableResources:
     """Tests for get_available_resources function."""
 
+    @patch("mcp_biomni.server.add_resources.load_blacklist_config")
     @patch("mcp_biomni.server.add_resources.build_file_index")
     @patch.dict(os.environ, {"BIOMNI_DATA_PATH": "/test/path"})
-    def test_get_available_resources_with_env_var(self, mock_build_index):
+    def test_get_available_resources_with_env_var(
+        self, mock_build_index, mock_load_blacklist
+    ):
         """Test getting available resources with environment variable set."""
+        mock_blacklist = Mock()
+        mock_load_blacklist.return_value = mock_blacklist
         mock_build_index.return_value = {"file1.txt": Mock(), "file2.csv": Mock()}
 
         result = get_available_resources()
 
         assert result == ["file1.txt", "file2.csv"]
         mock_build_index.assert_called_once()
-        # Check that Path was called with the environment variable
-        called_path = mock_build_index.call_args[0][0]
+        # Check that blacklist config was passed to build_file_index
+        called_path, called_blacklist = mock_build_index.call_args[0]
         assert str(called_path) == "/test/path"
+        assert called_blacklist == mock_blacklist
 
+    @patch("mcp_biomni.server.add_resources.load_blacklist_config")
     @patch("mcp_biomni.server.add_resources.build_file_index")
-    def test_get_available_resources_no_env_var(self, mock_build_index):
+    def test_get_available_resources_no_env_var(
+        self, mock_build_index, mock_load_blacklist
+    ):
         """Test getting available resources without environment variable."""
         # Ensure BIOMNI_DATA_PATH is not set
+        mock_blacklist = Mock()
+        mock_load_blacklist.return_value = mock_blacklist
         with patch.dict(os.environ, {}, clear=True):
             mock_build_index.return_value = {}
 
             result = get_available_resources()
 
             assert result == []
-            mock_build_index.assert_called_once_with(None)
+            mock_build_index.assert_called_once_with(None, mock_blacklist)
 
 
 class TestFileCatalogLogic:

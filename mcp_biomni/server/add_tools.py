@@ -11,6 +11,8 @@ from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import LoggingMiddleware
 from fastmcp.server.middleware.timing import TimingMiddleware
 
+from mcp_biomni.server.blacklist_config import load_blacklist_config
+
 
 def read_module2api(field: str) -> list[dict]:
     """
@@ -28,6 +30,14 @@ def serve_module(module_name: str, port: int, host: str = "0.0.0.0") -> None:  #
     inside biomni.tool.<module_name>.
     """
     try:
+        # Load blacklist configuration
+        blacklist_config = load_blacklist_config()
+
+        # Check if entire module is blacklisted
+        if blacklist_config.is_module_blocked(module_name):
+            print(f"✗ [{module_name}] Module is blacklisted, skipping")
+            return
+
         mod = importlib.import_module(f"biomni.tool.{module_name}")
         mcp = FastMCP(name=f"Biomni-{module_name}")
 
@@ -41,6 +51,11 @@ def serve_module(module_name: str, port: int, host: str = "0.0.0.0") -> None:  #
         registered = 0
         for tool_schema in api_schemas:
             name = tool_schema.get("name")
+
+            # Check if individual tool is blacklisted
+            if blacklist_config.is_tool_blocked(name):
+                print(f"✗ [{module_name}] {name}: blacklisted")
+                continue
             description = tool_schema.get("description", "No description available")
             required_names = "\n".join(
                 [p["name"] for p in tool_schema.get("required_parameters", [])]
@@ -82,8 +97,14 @@ def iter_tool_modules():
 
 
 def get_available_modules() -> list[str]:
-    """Get list of all available biomni tool modules."""
-    return sorted(iter_tool_modules())
+    """Get list of all available biomni tool modules, excluding blacklisted ones."""
+    blacklist_config = load_blacklist_config()
+    all_modules = sorted(iter_tool_modules())
+    return [
+        module
+        for module in all_modules
+        if not blacklist_config.is_module_blocked(module)
+    ]
 
 
 def validate_modules(requested_modules: list[str]) -> tuple[list[str], list[str]]:

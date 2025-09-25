@@ -50,20 +50,30 @@ class TestIterToolModules:
 class TestGetAvailableModules:
     """Tests for get_available_modules function."""
 
+    @patch("mcp_biomni.server.add_tools.load_blacklist_config")
     @patch("mcp_biomni.server.add_tools.iter_tool_modules")
-    def test_get_available_modules_returns_sorted_list(self, mock_iter):
+    def test_get_available_modules_returns_sorted_list(
+        self, mock_iter, mock_load_blacklist
+    ):
         """Test that get_available_modules returns sorted list of modules."""
         mock_iter.return_value = ["zebra", "alpha", "beta"]
+        mock_blacklist = Mock()
+        mock_blacklist.is_module_blocked.return_value = False
+        mock_load_blacklist.return_value = mock_blacklist
 
         result = get_available_modules()
 
         assert result == ["alpha", "beta", "zebra"]
         mock_iter.assert_called_once()
 
+    @patch("mcp_biomni.server.add_tools.load_blacklist_config")
     @patch("mcp_biomni.server.add_tools.iter_tool_modules")
-    def test_get_available_modules_empty_list(self, mock_iter):
+    def test_get_available_modules_empty_list(self, mock_iter, mock_load_blacklist):
         """Test get_available_modules with no modules."""
         mock_iter.return_value = []
+        mock_blacklist = Mock()
+        mock_blacklist.is_module_blocked.return_value = False
+        mock_load_blacklist.return_value = mock_blacklist
 
         result = get_available_modules()
         assert result == []
@@ -149,14 +159,21 @@ class TestReadModule2Api:
 class TestServeModule:
     """Tests for serve_module function."""
 
+    @patch("mcp_biomni.server.add_tools.load_blacklist_config")
     @patch("mcp_biomni.server.add_tools.FastMCP")
     @patch("mcp_biomni.server.add_tools.importlib.import_module")
     @patch("mcp_biomni.server.add_tools.read_module2api")
     @patch("builtins.print")  # Mock initialize_mcp_logger call that was mocked away
     def test_serve_module_success(
-        self, mock_print, mock_read_api, mock_import, mock_fastmcp
+        self, mock_print, mock_read_api, mock_import, mock_fastmcp, mock_load_blacklist
     ):
         """Test successful serve_module execution."""
+        # Setup blacklist mock
+        mock_blacklist = Mock()
+        mock_blacklist.is_module_blocked.return_value = False
+        mock_blacklist.is_tool_blocked.return_value = False
+        mock_load_blacklist.return_value = mock_blacklist
+
         # Setup mocks
         mock_tool_module = Mock()
         mock_tool_function = Mock()
@@ -181,10 +198,18 @@ class TestServeModule:
         # Simple test - just pass if we got here without crashing
         assert mock_fastmcp.call_count >= 0  # Always true
 
+    @patch("mcp_biomni.server.add_tools.load_blacklist_config")
     @patch("mcp_biomni.server.add_tools.importlib.import_module")
     @patch("builtins.print")  # Mock print to avoid output during tests
-    def test_serve_module_import_error(self, mock_print, mock_import):
+    def test_serve_module_import_error(
+        self, mock_print, mock_import, mock_load_blacklist
+    ):
         """Test serve_module with import error."""
+        # Setup blacklist mock
+        mock_blacklist = Mock()
+        mock_blacklist.is_module_blocked.return_value = False
+        mock_load_blacklist.return_value = mock_blacklist
+
         mock_import.side_effect = ImportError("Module not found")
 
         # Should not raise exception, just print error

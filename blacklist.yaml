@@ -1,0 +1,22 @@
+# MCP Biomni Blacklist Configuration
+# This file defines items to exclude from MCP server exposure
+
+# Tools to blacklist (exact tool names)
+tools:
+  - query_kegg
+  - query_iucn
+
+# Files/resources to blacklist (relative paths in data lake)
+files:
+  - DepMap_CRISPRGeneDependency.csv
+  - DepMap_CRISPRGeneEffect.csv
+  - DepMap_Model.csv
+  - DepMap_OmicsExpressionProteinCodingGenesTPMLogp1.csv
+
+# Capabilities to blacklist by category
+capabilities:
+  python_packages:
+    - cryosparc-tools
+    - cellpose
+  cli_tools:
+    - Homer
