@@ -1,0 +1,97 @@
+# Docker Compose configuration for MCP Biomni servers
+# Supports both single-container (all MCPs) and multi-container (one MCP per container) deployments
+
+# Shared configuration
+x-common-environment: &common-environment
+  BIOMNI_DATA_PATH: /app/data
+  BIOMNI_LLM: claude-sonnet-4-20250514
+  BIOMNI_TIMEOUT_SECONDS: 1200
+  MCP_SERVER_HOST: 0.0.0.0
+  MCP_BASE_PORT: ${MCP_BASE_PORT:-8001}
+  PYTHONPATH: /app
+  # Add your API keys in .env file or override here
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+
+x-common-volumes: &common-volumes
+  - ${DATA_DIR:-./data}:/app/data
+  - ./logs:/app/logs
+  - ./.env:/app/.env:ro
+
+x-common-config: &common-config
+  image: 671016219382.dkr.ecr.us-east-1.amazonaws.com/sa3-batch-development:biomni_latest
+  build:
+    context: .
+    dockerfile: Dockerfile
+    tags:
+      - 671016219382.dkr.ecr.us-east-1.amazonaws.com/sa3-batch-development:biomni_latest
+  restart: unless-stopped
+  networks:
+    - mcp-biomni
+  volumes: *common-volumes
+  environment: *common-environment
+
+services:
+  # ============================================================================
+  # SINGLE CONTAINER DEPLOYMENT (All MCPs in one container)
+  # ============================================================================
+
+  # All MCP services in a single container - Default deployment
+  mcp-all:
+    <<: *common-config
+    container_name: mcp-biomni-all
+    command: >
+      bash -c "
+        source /usr/local/bin/activate-biomni &&
+        python -m mcp_biomni.server.server --host 0.0.0.0 --port $${MCP_BASE_PORT} --resources
+      "
+    ports:
+      # Expose ports for all possible services (18 modules + resources)
+      - "${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}:${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}"
+
+  # ============================================================================
+  # MULTI-CONTAINER DEPLOYMENT (One MCP per container)
+  # ============================================================================
+
+  # Biochemistry module
+  mcp-biochemistry:
+    <<: *common-config
+    container_name: mcp-biomni-biochemistry
+    command: >
+      bash -c "
+        source /usr/local/bin/activate-biomni &&
+        python -m mcp_biomni.server.server --host 0.0.0.0 --port $${MCP_BASE_PORT} --modules biochemistry
+      "
+    ports:
+      - "${MCP_BASE_PORT:-8001}:${MCP_BASE_PORT:-8001}"
+    profiles:
+      - multi
+
+  # Core modules only (genetics, genomics, biochemistry, cell_biology)
+  mcp-core:
+    <<: *common-config
+    container_name: mcp-biomni-core
+    command: >
+      bash -c "
+        source /usr/local/bin/activate-biomni &&
+        python -m mcp_biomni.server.server --host 0.0.0.0 --port $${MCP_BASE_PORT} --modules genetics genomics biochemistry cell_biology --resources
+      "
+    ports:
+      - "${MCP_BASE_PORT:-8001}-${MCP_CORE_PORT_END:-8005}:${MCP_BASE_PORT:-8001}-${MCP_CORE_PORT_END:-8005}"
+    profiles:
+      - core
+
+networks:
+  mcp-biomni:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local

@@ -1,0 +1,76 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+
+# Virtual environments
+.venv
+venv
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation that's not needed in container
+docs/
+figs/
+tutorials/
+
+# Test files
+test_*.py
+
+# Build artifacts
+build/
+dist/
+*.egg-info
+
+# Temporary files
+*.tmp
+*.temp
+
+# Large data files that cause space issues
+*.csv
+*.tsv
+*.txt
+*.gz
+*.bz2
+*.zip
+*.tar
+*.h5
+*.hdf5
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.json
+*.xml
+*.bed
+*.vcf
+*.sam
+*.bam
+*.fastq
+*.fasta
+*.fa
+*.fq
+
+# Data directories
+data/
+results/
+biomni_data/
+**/data/
+**/results/
+**/biomni_data/
