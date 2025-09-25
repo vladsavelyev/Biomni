@@ -50,38 +50,6 @@ services:
       # Expose ports for all possible services (18 modules + resources)
       - "${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}:${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}"
 
-  # ============================================================================
-  # MULTI-CONTAINER DEPLOYMENT (One MCP per container)
-  # ============================================================================
-
-  # Biochemistry module
-  mcp-biochemistry:
-    <<: *common-config
-    container_name: mcp-biomni-biochemistry
-    command: >
-      bash -c "
-        source /usr/local/bin/activate-biomni &&
-        python -m mcp_biomni.server.server --host 0.0.0.0 --port $${MCP_BASE_PORT} --modules biochemistry
-      "
-    ports:
-      - "${MCP_BASE_PORT:-8001}:${MCP_BASE_PORT:-8001}"
-    profiles:
-      - multi
-
-  # Core modules only (genetics, genomics, biochemistry, cell_biology)
-  mcp-core:
-    <<: *common-config
-    container_name: mcp-biomni-core
-    command: >
-      bash -c "
-        source /usr/local/bin/activate-biomni &&
-        python -m mcp_biomni.server.server --host 0.0.0.0 --port $${MCP_BASE_PORT} --modules genetics genomics biochemistry cell_biology --resources
-      "
-    ports:
-      - "${MCP_BASE_PORT:-8001}-${MCP_CORE_PORT_END:-8005}:${MCP_BASE_PORT:-8001}-${MCP_CORE_PORT_END:-8005}"
-    profiles:
-      - core
-
 networks:
   mcp-biomni:
     driver: bridge
