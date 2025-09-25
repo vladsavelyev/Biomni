@@ -261,78 +261,160 @@ def serve_resources(port: int, host: str = "0.0.0.0") -> None:  # noqa: B104
 
         print("✓ [resources] registered tool_capabilities")
 
-        # For each file, register a tool
-        for rel_name_ref, meta_ref in file_index.items():
-            tool_name = sanitize_tool_name(rel_name_ref)
-            description = (
-                f"{meta_ref.desc} (file: {rel_name_ref}, mime: {meta_ref.mime})"
+        # Register file_catalog tool
+        @mcp.tool(
+            description="Returns a machine-readable catalog of all available data lake files with their metadata and descriptions",
+            tags={"biomni", "data-lake", "files"},
+        )
+        async def file_catalog(
+            search: str | None = None, file_type: str | None = None
+        ) -> str:
+            """
+            Returns catalog of all available data lake files.
+
+            Args:
+                search: Search term to filter files by name or description
+                file_type: Filter by file extension (e.g., 'csv', 'parquet', 'json')
+            """
+            result = {}
+
+            for rel_name, meta in file_index.items():
+                file_info = {
+                    "path": rel_name,
+                    "full_path": str(meta.path),
+                    "description": meta.desc,
+                    "mime_type": meta.mime,
+                    "size_bytes": meta.path.stat().st_size
+                    if meta.path.exists()
+                    else None,
+                    "extension": meta.path.suffix.lower().lstrip(".")
+                    if meta.path.suffix
+                    else None,
+                }
+
+                # Apply filters
+                include_file = True
+
+                if search:
+                    search_term = search.lower()
+                    if not (
+                        search_term in rel_name.lower()
+                        or search_term in meta.desc.lower()
+                    ):
+                        include_file = False
+
+                if file_type and include_file:
+                    if file_info["extension"] != file_type.lower():
+                        include_file = False
+
+                if include_file:
+                    result[rel_name] = file_info
+
+            summary = {
+                "total_files": len(file_index),
+                "filtered_files": len(result),
+                "file_types": list(
+                    {
+                        info.get("extension")
+                        for info in result.values()
+                        if info.get("extension")
+                    }
+                ),
+            }
+
+            return json.dumps(
+                {
+                    "summary": summary,
+                    "files": result,
+                    "usage_note": "Use file_access tool to read specific files by their path",
+                },
+                indent=2,
             )
 
-            def create_tool_func(rel_name, meta):
-                """Create a tool function with proper closure"""
+        print("✓ [resources] registered file_catalog")
 
-                async def tool_func(
-                    op: str | None = None,
-                    max_bytes: int | None = None,
-                    as_text: bool | None = None,
-                    _rel_name=rel_name,  # Capture loop variable
-                    _meta=meta,  # Capture loop variable
-                ) -> str:
-                    chosen_op = (op or "describe").lower()
+        # Register file_access tool
+        @mcp.tool(
+            description="Access and read specific data lake files by their relative path",
+            tags={"biomni", "data-lake", "file-access"},
+        )
+        async def file_access(
+            file_path: str,
+            op: str | None = None,
+            max_bytes: int | None = None,
+            as_text: bool | None = None,
+        ) -> str:
+            """
+            Access a specific data lake file.
 
-                    if chosen_op not in {"describe", "read"}:
-                        return f"Unsupported op '{op}'. Use 'describe' or 'read'."
+            Args:
+                file_path: Relative path of the file in the data lake
+                op: Operation to perform ('describe' or 'read'). Default: 'describe'
+                max_bytes: Maximum bytes to read (for 'read' operation)
+                as_text: Force text mode for binary files (for 'read' operation)
+            """
+            chosen_op = (op or "describe").lower()
 
-                    if chosen_op == "describe":
-                        payload = {
-                            "file": _rel_name,
-                            "path": str(_meta.path),
-                            "description": _meta.desc,
-                            "mime": _meta.mime,
-                            "size_bytes": _meta.path.stat().st_size
-                            if _meta.path.exists()
-                            else None,
-                        }
-                        return json.dumps(payload, indent=2)
+            if chosen_op not in {"describe", "read"}:
+                return f"Unsupported op '{op}'. Use 'describe' or 'read'."
 
-                    # read
-                    if not _meta.path.exists():
-                        return f"File not found: {_rel_name}"
+            if file_path not in file_index:
+                available_files = list(file_index.keys())[
+                    :10
+                ]  # Show first 10 as examples
+                return json.dumps(
+                    {
+                        "error": f"File not found: {file_path}",
+                        "available_files_sample": available_files,
+                        "total_available": len(file_index),
+                        "suggestion": "Use file_catalog tool to see all available files",
+                    },
+                    indent=2,
+                )
 
-                    mime = _meta.mime
-                    want_text = looks_textual(mime)
-                    if as_text is True:
-                        want_text = True
-                    elif as_text is False:
-                        want_text = False
+            meta = file_index[file_path]
 
-                    data = await read_bytes(_meta.path, max_bytes=max_bytes)
+            if chosen_op == "describe":
+                payload = {
+                    "file": file_path,
+                    "path": str(meta.path),
+                    "description": meta.desc,
+                    "mime": meta.mime,
+                    "size_bytes": meta.path.stat().st_size
+                    if meta.path.exists()
+                    else None,
+                }
+                return json.dumps(payload, indent=2)
 
-                    if want_text:
-                        text = data.decode("utf-8", errors="replace")
-                        # Return as text with header
-                        header = f"[file={_rel_name} mime={mime} bytes={len(data)}]"
-                        return header + "\n" + text
-                    else:
-                        # Return base64 encoded data with metadata
-                        b64 = base64.b64encode(data).decode("ascii")
-                        header = f"[file={_rel_name} mime={mime} bytes={len(data)} encoding=base64]"
-                        return header + "\n" + b64
+            # read operation
+            if not meta.path.exists():
+                return f"File not found: {file_path}"
 
-                return tool_func  # noqa: B023
+            mime = meta.mime
+            want_text = looks_textual(mime)
+            if as_text is True:
+                want_text = True
+            elif as_text is False:
+                want_text = False
 
-            # Register the tool
-            tool_func = create_tool_func(rel_name_ref, meta_ref)
-            mcp.tool(
-                tool_func,
-                name=tool_name,
-                description=description,
-                tags={"biomni", "data-lake"},
-            )
+            data = await read_bytes(meta.path, max_bytes=max_bytes)
 
-            print(f"✓ [resources] registered {tool_name} -> {rel_name_ref}")
+            if want_text:
+                text = data.decode("utf-8", errors="replace")
+                # Return as text with header
+                header = f"[file={file_path} mime={mime} bytes={len(data)}]"
+                return header + "\n" + text
+            else:
+                # Return base64 encoded data with metadata
+                b64 = base64.b64encode(data).decode("ascii")
+                header = (
+                    f"[file={file_path} mime={mime} bytes={len(data)} encoding=base64]"
+                )
+                return header + "\n" + b64
 
-        total_registered = 1 + len(file_index)  # capabilities tool + data file tools
+        print("✓ [resources] registered file_access")
+
+        total_registered = 3  # capabilities tool + file_catalog + file_access tools
         print(f"[resources] total data tools registered: {total_registered}")
         print(f"[resources] BIOMNI_DATA_PATH={base_path if base_path else 'UNSET'}")
         mcp.run(transport="streamable-http", host=host, port=port)
