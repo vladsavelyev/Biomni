@@ -57,7 +57,7 @@ description = [
                 "default": None,
                 "description": "List of SMILES strings representing small molecules to dock",
                 "name": "smiles_list",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
@@ -69,13 +69,13 @@ description = [
                 "default": None,
                 "description": "3D coordinates [x, y, z] of the docking box center",
                 "name": "box_center",
-                "type": "List[float]",
+                "type": "array", "items": {"type": "number"},
             },
             {
                 "default": None,
                 "description": "Dimensions [x, y, z] of the docking box",
                 "name": "box_size",
-                "type": "List[float]",
+                "type": "array", "items": {"type": "number"},
             },
         ],
     },
@@ -152,7 +152,7 @@ description = [
                 "default": None,
                 "description": "List of SMILES strings representing chemical compounds to analyze",
                 "name": "smiles_list",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             }
         ],
     },
@@ -177,7 +177,7 @@ description = [
                 "default": None,
                 "description": "List of SMILES strings representing chemical compounds",
                 "name": "smiles_list",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
@@ -198,7 +198,7 @@ description = [
                 "containing name, active ingredient, "
                 "concentration, and excipients",
                 "name": "formulations",
-                "type": "List[dict]",
+                "type": "array", "items": {"type": "object"},
             },
             {
                 "default": None,
@@ -207,13 +207,13 @@ description = [
                 "temperature, humidity (optional), "
                 "and description",
                 "name": "storage_conditions",
-                "type": "List[dict]",
+                "type": "array", "items": {"type": "object"},
             },
             {
                 "default": None,
                 "description": "List of time points in days to evaluate stability",
                 "name": "time_points",
-                "type": "List[int]",
+                "type": "array", "items": {"type": "integer"},
             },
         ],
     },
@@ -280,7 +280,7 @@ description = [
                 "default": None,
                 "description": "Time points (hours) at which measurements were taken",
                 "name": "time_points",
-                "type": "List[float] or numpy.ndarray",
+                "type": "array", "items": {"type": "number"},
             },
             {
                 "default": None,
@@ -496,7 +496,7 @@ description = [
                 "default": None,
                 "description": "List of drug names to query for interactions",
                 "name": "drug_names",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             }
         ],
         "optional_parameters": [
@@ -504,13 +504,13 @@ description = [
                 "default": None,
                 "description": "Filter results by specific interaction types",
                 "name": "interaction_types",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
                 "description": "Filter results by severity levels (Major, Moderate, Minor)",
                 "name": "severity_levels",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
@@ -528,7 +528,7 @@ description = [
                 "default": None,
                 "description": "List of drugs to analyze for combination safety",
                 "name": "drug_list",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             }
         ],
         "optional_parameters": [
@@ -592,7 +592,7 @@ description = [
                 "default": None,
                 "description": "List of drugs to avoid interactions with",
                 "name": "contraindicated_drugs",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
         ],
         "optional_parameters": [
@@ -632,13 +632,13 @@ description = [
                 "default": None,
                 "description": "Optional filter by severity levels ['serious', 'non_serious']",
                 "name": "severity_filter",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
                 "description": "Optional filter by outcomes ['life_threatening', 'hospitalization', 'death']",
                 "name": "outcome_filter",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": 100,
@@ -664,7 +664,7 @@ description = [
                 "default": None,
                 "description": "Optional list of specific sections to retrieve ['indications_and_usage', 'contraindications', 'warnings', 'dosage_and_administration']",
                 "name": "sections",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
         ],
     },
@@ -684,7 +684,7 @@ description = [
                 "default": None,
                 "description": "Optional filter by recall class ['Class I', 'Class II', 'Class III']",
                 "name": "classification",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
@@ -702,7 +702,7 @@ description = [
                 "default": None,
                 "description": "List of drug names to analyze for safety signals",
                 "name": "drug_list",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
         ],
         "optional_parameters": [

@@ -165,7 +165,7 @@ description = [
                 "default": None,
                 "description": "Custom command line arguments to pass to the UCE script",
                 "name": "custom_args",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
         ],
         "required_parameters": [
@@ -329,7 +329,7 @@ description = [
                 "default": None,
                 "description": "Paths to FASTA files containing whole-genome sequences to be analyzed",
                 "name": "sample_fasta_files",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             },
             {
                 "default": None,
@@ -650,7 +650,7 @@ description = [
                 "default": None,
                 "description": "List of Ensembl gene IDs (e.g., ['ENSG00000012048', 'ENSG00000012049'])",
                 "name": "ensembl_gene_ids",
-                "type": "List[str]",
+                "type": "array", "items": {"type": "string"},
             }
         ],
     },

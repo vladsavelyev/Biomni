@@ -1,3 +1,5 @@
+from typing import List
+
 def analyze_cell_migration_metrics(
     image_sequence_path,
     pixel_size_um=1.0,
@@ -231,7 +233,11 @@ Note: Analysis used pixel size of {pixel_size_um} μm and time interval of {time
     return log.strip()
 
 
-def perform_crispr_cas9_genome_editing(guide_rna_sequences, target_genomic_loci, cell_tissue_type):
+def perform_crispr_cas9_genome_editing(
+    guide_rna_sequences: List[str],
+    target_genomic_loci: str,
+    cell_tissue_type: str
+) -> str:
     """Simulates CRISPR-Cas9 genome editing process including guide RNA design, delivery, and analysis.
 
     Parameters
