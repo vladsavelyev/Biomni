@@ -1088,7 +1088,9 @@ def gene_set_enrichment_analysis(
         return f"An error occurred: {e}"
 
 
-def analyze_chromatin_interactions(hic_file_path: str, regulatory_elements_bed: str, output_dir: str = "./output") -> str:
+def analyze_chromatin_interactions(
+    hic_file_path: str, regulatory_elements_bed: str, output_dir: str = "./output"
+) -> str:
     """Analyze chromatin interactions from Hi-C data to identify enhancer-promoter interactions and TADs.
 
     Parameters
@@ -1421,7 +1423,9 @@ def analyze_chromatin_interactions(hic_file_path: str, regulatory_elements_bed: 
     return "\n".join(log)
 
 
-def analyze_comparative_genomics_and_haplotypes(sample_fasta_files: str, reference_genome_path: str, output_dir: str = "./output") -> str:
+def analyze_comparative_genomics_and_haplotypes(
+    sample_fasta_files: str, reference_genome_path: str, output_dir: str = "./output"
+) -> str:
     """Perform comparative genomics and haplotype analysis on multiple genome samples.
 
     This function aligns multiple genome samples to a reference, identifies variants,

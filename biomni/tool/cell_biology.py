@@ -1,6 +1,4 @@
-from typing import List
-
-def quantify_cell_cycle_phases_from_microscopy(image_paths: List[str], output_dir: str = "./results") -> str:
+def quantify_cell_cycle_phases_from_microscopy(image_paths: list[str], output_dir: str = "./results") -> str:
     """Quantify the percentage of cells in each cell cycle phase using Calcofluor white stained microscopy images.
 
     This function processes microscopy images where cell walls/septa are stained with Calcofluor white,
@@ -161,7 +159,9 @@ def quantify_cell_cycle_phases_from_microscopy(image_paths: List[str], output_di
     return log
 
 
-def quantify_and_cluster_cell_motility(image_sequence_path: str, output_dir: str = "./results", num_clusters: int = 3) -> str:
+def quantify_and_cluster_cell_motility(
+    image_sequence_path: str, output_dir: str = "./results", num_clusters: int = 3
+) -> str:
     """Quantify cell motility features from time-lapse microscopy images and cluster cells based on motility patterns.
 
     Parameters
@@ -573,7 +573,9 @@ def analyze_flow_cytometry_immunophenotyping(
     return log
 
 
-def analyze_mitochondrial_morphology_and_potential(morphology_image_path: str, potential_image_path: str, output_dir: str = "./output") -> str:
+def analyze_mitochondrial_morphology_and_potential(
+    morphology_image_path: str, potential_image_path: str, output_dir: str = "./output"
+) -> str:
     """Quantifies metrics of mitochondrial morphology and membrane potential from fluorescence microscopy images.
 
     Parameters

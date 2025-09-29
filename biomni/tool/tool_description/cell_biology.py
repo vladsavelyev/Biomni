@@ -16,7 +16,8 @@ description = [
                 "default": None,
                 "description": "List of file paths to microscopy images of cells stained with Calcofluor white",
                 "name": "image_paths",
-                "type": "array", "items": {"type": "string"},
+                "type": "array",
+                "items": {"type": "string"},
             }
         ],
     },

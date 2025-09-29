@@ -141,7 +141,8 @@ description = [
                 "default": None,
                 "description": "List of specific attributes to retrieve",
                 "name": "attributes",
-                "type": "array", "items": {"type": "string"},
+                "type": "array",
+                "items": {"type": "string"},
             },
         ],
         "required_parameters": [
@@ -149,7 +150,8 @@ description = [
                 "default": None,
                 "description": "List of PDB identifiers to query",
                 "name": "identifiers",
-                "type": "array", "items": {"type": "string"},
+                "type": "array",
+                "items": {"type": "string"},
             }
         ],
     },
