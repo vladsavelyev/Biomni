@@ -1,3 +1,7 @@
 [submodule "Biomni"]
 	path = Biomni
 	url = git@github.com:snap-stanford/Biomni.git
+	branch = tmp-navari-adapt
+[submodule "biomni-agent"]
+	path = biomni-agent
+	url = https://github.com/azu-oncology-rd/biomni-agent
