@@ -8,6 +8,7 @@ MCP Biomni is a server that implements the [Model Context Protocol (MCP)](https:
 
 ### Features
 
+- **Biomni Agent Wrapper**: Single `biomni_research_task` tool for Navari integration
 - **Biomni Tools**: 18+ biomedical tool modules (biochemistry, genetics, genomics, etc.)
 - **Data Resources**: 40+ curated biological datasets (protein interactions, gene expression, GWAS, etc.)
 - **Unified Server**: Single server process serving both tools and data via MCP
@@ -17,7 +18,21 @@ MCP Biomni is a server that implements the [Model Context Protocol (MCP)](https:
 
 ## Architecture
 
-The server provides two main types of resources:
+The system has two deployment modes:
+
+### 1. Navari Integration (Wrapper Mode - **Recommended for Navari**)
+
+```
+Navari Agent → mcp-biomni-wrapper (port 8019) → biomni-agent → Biomni MCPs (ports 8001-8020)
+```
+
+- **Navari** sees only one tool: `biomni_research_task`
+- **biomni-agent** (pydantic-ai based) orchestrates tool selection and execution
+- **Biomni MCPs** provide 18+ tool modules and 40+ data resources internally
+
+### 2. Direct MCP Access (Tool Mode)
+
+The server provides direct access to Biomni tools and data:
 
 ### Tool Modules
 
@@ -85,6 +100,44 @@ The data resources server provides a special `tool_capabilities` tool that retur
 }
 ```
 
+## Biomni Agent Wrapper Tool
+
+For Navari integration, the wrapper exposes a single tool:
+
+### Tool: `biomni_research_task`
+
+Execute a biomedical research task using the Biomni agent.
+
+**Parameters:**
+- `task_description` (str): Description of the biomedical research task
+- `result_file_path` (Path): File path to store the research result JSON
+- `llm_model` (str, optional): LLM model to use (default: "claude-sonnet-4-20250514")
+
+**Returns:**
+- Status message with execution details
+- Saves detailed JSON result to `result_file_path`
+
+**Example:**
+```python
+from fastmcp.client import Client, StreamableHttpTransport
+
+async with Client(StreamableHttpTransport("http://localhost:8019/mcp")) as client:
+    result = await client.call_tool(
+        "biomni_research_task",
+        {
+            "task_description": "Analyze CRISPR gene editing applications in cancer",
+            "result_file_path": "/workspace/result.json",
+            "llm_model": "claude-sonnet-4-20250514"
+        }
+    )
+```
+
+The tool orchestrates:
+1. **Tool Discovery**: Discovers all available Biomni tools and data resources
+2. **Tool Selection**: Uses an AI agent to select relevant tools for the task
+3. **Execution**: Plans and executes the research workflow
+4. **Report Generation**: Creates a comprehensive research report
+
 ## Installation
 
 ### Prerequisites
@@ -124,7 +177,21 @@ The data resources server provides a special `tool_capabilities` tool that retur
 
 ## Usage
 
-### Starting the Server
+### Starting the Wrapper (for Navari)
+
+The wrapper service starts both the biomni-agent wrapper and the underlying Biomni MCPs:
+
+```bash
+# Start both wrapper and Biomni MCPs
+docker compose up -d mcp-biomni-wrapper
+
+# Check logs
+docker compose logs -f mcp-biomni-wrapper
+```
+
+The wrapper will be available at `http://localhost:8019/mcp` and exposes a single `biomni_research_task` tool.
+
+### Starting the Server (Direct MCP Access)
 
 The MCP Biomni server can serve tools, data resources, or both:
 

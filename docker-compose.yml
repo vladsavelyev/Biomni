@@ -15,9 +15,8 @@ x-common-environment: &common-environment
   AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
 
 x-common-volumes: &common-volumes
-  - ${DATA_DIR:-./data}:/app/data
-  - ./logs:/app/logs
-  - ./.env:/app/.env:ro
+  - ${DATA_DIR:-data-volume}:/app/data
+  - ${LOGS_DIR:-./logs}:/app/logs
 
 x-common-config: &common-config
   image: 671016219382.dkr.ecr.us-east-1.amazonaws.com/sa3-batch-development:biomni_latest
@@ -34,6 +33,47 @@ x-common-config: &common-config
 
 services:
   # ============================================================================
+  # WRAPPER SERVICE (Navari-facing MCP that wraps Biomni Agent)
+  # ============================================================================
+
+  mcp-biomni-wrapper:
+    <<: *common-config
+    container_name: mcp-biomni-wrapper
+    command: >
+      bash -c "
+        source /usr/local/bin/activate-biomni &&
+        cd /app &&
+        uvicorn mcp_biomni.wrapper.server:app --host 0.0.0.0 --port 8025
+      "
+    ports:
+      - "8025:8025"
+    environment:
+      <<: *common-environment
+      DATA_DIR: /app/data
+      BIOMNI_MCP_SERVERS_JSON: '${BIOMNI_MCP_SERVERS_JSON:-{"data_lake": "http://mcp-biomni-all:8003/mcp/", "biochemistry": "http://mcp-biomni-all:8001/mcp/", "genetics": "http://mcp-biomni-all:8002/mcp/"}}'
+      WORKSPACE_DIR: ${DATA_DIR:-data-volume}
+      MODEL_VERBOSE: ${MODEL_VERBOSE:-false}
+      # aixtools configuration
+      MODEL_FAMILY: ${MODEL_FAMILY:-bedrock}
+      AWS_PROFILE: ${AWS_PROFILE:-astrazeneca_onco_rd}
+      BEDROCK_MODEL_NAME: ${BEDROCK_MODEL_NAME:-us.anthropic.claude-sonnet-4-20250514-v1:0}
+    volumes:
+      - ${DATA_DIR:-data-volume}:/app/data
+      - ~/.aws:/home/biomni/.aws:ro
+    depends_on:
+      - mcp-all
+    networks:
+      - navari_backend
+      - mcp-biomni
+    tty: true
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./mcp_biomni/
+          target: /app/mcp_biomni/
+    restart: unless-stopped
+
+  # ============================================================================
   # SINGLE CONTAINER DEPLOYMENT (All MCPs in one container)
   # ============================================================================
 
@@ -49,6 +89,16 @@ services:
     ports:
       # Expose ports for all possible services (18 modules + resources)
       - "${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}:${MCP_BASE_PORT:-8001}-${MCP_BASE_PORT_END:-8020}"
+    environment:
+      <<: *common-environment
+      DATA_DIR: /app/data
+    tty: true
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./mcp_biomni/
+          target: /app/mcp_biomni/
+    restart: unless-stopped
 
 networks:
   mcp-biomni:
@@ -56,7 +106,9 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.25.0.0/16
+  navari_backend:
+    external: true
 
 volumes:
   data:

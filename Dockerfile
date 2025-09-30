@@ -53,6 +53,7 @@ RUN /opt/conda/envs/biomni_e1/bin/pip install torch==2.8.0 gget==0.29.2 PyPDF2==
 
 # Copy mcp_biomni source code
 COPY mcp_biomni/ /app/mcp_biomni/
+COPY biomni-agent/ /app/biomni-agent/
 COPY pyproject.toml /app/
 COPY README.md /app/
 COPY blacklist.yaml /app/
@@ -60,6 +61,15 @@ COPY blacklist.yaml /app/
 # Install mcp_biomni package
 WORKDIR /app
 RUN /opt/conda/envs/biomni_e1/bin/pip install -e .
+
+# Install biomni-agent package
+RUN /opt/conda/envs/biomni_e1/bin/pip install -e /app/biomni-agent
+
+# Create empty .env to satisfy aixtools
+RUN touch /app/.env
+
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R biomni:biomni /app/logs
 
 # Create activation script
 RUN echo '#!/bin/bash' > /usr/local/bin/activate-biomni && \
