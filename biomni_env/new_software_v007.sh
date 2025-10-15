@@ -12,4 +12,4 @@ $CONDA_ENV_PIP install fair-esm
 $CONDA_ENV_PIP install nnunet nibabel nilearn
 $CONDA_ENV_PIP install mi-googlesearch-python
 $CONDA_ENV_PIP install git+https://github.com/pylabrobot/pylabrobot.git
-/opt/conda/bin/conda install -n biomni_e1 -y weasyprint
+$CONDA_ENV_PIP install weasyprint
