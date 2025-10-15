@@ -13,7 +13,9 @@ _captured_plots = []
 def run_python_repl(command: str) -> str:
     """Executes the provided Python command in a persistent environment and returns the output.
     Variables defined in one execution will be available in subsequent executions.
+    Files created during execution will be saved to /app/data for persistence.
     """
+    import os
 
     def execute_in_repl(command: str) -> str:
         """Helper function to execute the command in the persistent environment."""
@@ -22,6 +24,12 @@ def run_python_repl(command: str) -> str:
 
         # Use the persistent namespace
         global _persistent_namespace
+
+        # Save current working directory and change to /app/data for file persistence
+        old_cwd = os.getcwd()
+        data_dir = os.environ.get('DATA_DIR', '/app/data')
+        os.makedirs(data_dir, exist_ok=True)
+        os.chdir(data_dir)
 
         try:
             # Apply matplotlib monkey patches before execution
@@ -38,6 +46,8 @@ def run_python_repl(command: str) -> str:
             output = f"Error: {str(e)}"
         finally:
             sys.stdout = old_stdout
+            # Restore original working directory
+            os.chdir(old_cwd)
         return output
 
     command = command.strip("```").strip()
