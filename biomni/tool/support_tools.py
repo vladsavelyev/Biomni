@@ -13,9 +13,10 @@ _captured_plots = []
 def run_python_repl(command: str) -> str:
     """Executes the provided Python command in a persistent environment and returns the output.
     Variables defined in one execution will be available in subsequent executions.
-    Files created during execution will be saved to /app/data for persistence.
+    Files created during execution will be saved to the agent output directory for persistence.
     """
     import os
+    import warnings
 
     def execute_in_repl(command: str) -> str:
         """Helper function to execute the command in the persistent environment."""
@@ -25,11 +26,21 @@ def run_python_repl(command: str) -> str:
         # Use the persistent namespace
         global _persistent_namespace
 
-        # Save current working directory and change to /app/data for file persistence
+        # Get output directory with backward compatibility
+        output_dir = os.environ.get('AGENT_OUTPUT_ARTIFACTS_DIR')
+        if not output_dir:
+            output_dir = os.environ.get('DATA_DIR', '/app/data')
+            if os.environ.get('DATA_DIR'):
+                warnings.warn(
+                    "DATA_DIR is deprecated. Please use AGENT_OUTPUT_ARTIFACTS_DIR instead.",
+                    DeprecationWarning,
+                    stacklevel=3
+                )
+
+        # Save current working directory and change to output directory
         old_cwd = os.getcwd()
-        data_dir = os.environ.get('DATA_DIR', '/app/data')
-        os.makedirs(data_dir, exist_ok=True)
-        os.chdir(data_dir)
+        os.makedirs(output_dir, exist_ok=True)
+        os.chdir(output_dir)
 
         try:
             # Apply matplotlib monkey patches before execution
