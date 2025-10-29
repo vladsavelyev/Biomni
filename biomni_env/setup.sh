@@ -168,7 +168,14 @@ main() {
 
     # Step 3: Install core bioinformatics tools (including QIIME2)
     echo -e "\n${YELLOW}Step 3: Installing core bioinformatics tools (including QIIME2)...${NC}"
-    install_env_file "bio_env.yml" "core bioinformatics tools"
+
+    # Use bio_env.mac.yml for Mac builds (IMAGE_VARIANT=mac), otherwise use bio_env.yml
+    if [ "${IMAGE_VARIANT}" = "mac" ]; then
+        echo -e "${YELLOW}Detected Mac variant - using bio_env.mac.yml (excludes openmm)${NC}"
+        install_env_file "bio_env.mac.yml" "core bioinformatics tools"
+    else
+        install_env_file "bio_env.yml" "core bioinformatics tools"
+    fi
 
     # Step 4: Install R packages
     echo -e "\n${YELLOW}Step 4: Installing R packages...${NC}"
