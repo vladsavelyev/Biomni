@@ -39,17 +39,19 @@ dependencies:
     - umap-learn
     - scrublet
     - scvelo
-    - scvi-tools
+    # EXCLUDED for Mac ARM64 build (requires scikit-misc which needs Fortran):
+    # - scvi-tools
     - harmony-pytorch
     - pyliftover
     - pytdc==0.4.0
     - pysam
     - pyfaidx
-    - pyranges
-    - pybedtools
+    # EXCLUDED for Mac ARM64 build (wheel build failures - pyranges depends on pybedtools):
+    # - pyranges
+    # - pybedtools
     # EXCLUDED for Mac ARM64 build (no Python 3.11 wheels):
     # - openmm
-    - pystan
+    # - pystan
     - igraph
     - pyscenic
     - cooler
@@ -63,9 +65,11 @@ dependencies:
     - reportlab
     #- flowkit
     - hmmlearn
-    - msprime
+    # EXCLUDED for Mac ARM64 build (wheel build failures):
+    # - msprime
     - tskit
     - cyvcf2
     - pykalman
     - community
-    - fanc
+    # EXCLUDED for Mac ARM64 build (fanc depends on pybedtools which fails to build):
+    # - fanc
