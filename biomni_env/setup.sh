@@ -171,10 +171,11 @@ main() {
 
     # Use fixed_env.yml for reduced variant (faster, no solving, less memory)
     # Use bio_env.yml for full variant (allows newer versions)
-    if [ -f "/.dockerenv" ] || [ -n "${USE_REDUCED_ENV}" ]; then
+    if [ -n "${USE_REDUCED_ENV}" ]; then
         echo -e "${YELLOW}Using reduced environment - fixed_env.yml (pre-solved dependencies)${NC}"
         install_env_file "fixed_env.yml" "core bioinformatics tools"
     else
+        echo -e "${YELLOW}Using full environment - bio_env.yml (latest versions)${NC}"
         install_env_file "bio_env.yml" "core bioinformatics tools"
     fi
 
