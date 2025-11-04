@@ -40,10 +40,11 @@ WORKDIR /tmp/build
 COPY biomni_env/ /tmp/biomni_env/
 
 # Run setup.sh to create conda environment (HEAVY - cached layer)
+# Set USE_REDUCED_ENV=1 to use fixed_env.yml (reduced variant, pre-solved, less memory)
 RUN cd /tmp/biomni_env && \
     test -f setup.sh || { echo "ERROR: setup.sh not found"; exit 1; } && \
     chmod +x setup.sh && \
-    bash setup.sh && \
+    USE_REDUCED_ENV=1 bash setup.sh && \
     echo "Environment created, verifying..." && \
     conda env list && \
     /opt/conda/envs/biomni_e1/bin/python --version

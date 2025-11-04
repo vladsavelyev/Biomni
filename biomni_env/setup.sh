@@ -169,10 +169,11 @@ main() {
     # Step 3: Install core bioinformatics tools (including QIIME2)
     echo -e "\n${YELLOW}Step 3: Installing core bioinformatics tools (including QIIME2)...${NC}"
 
-    # Use bio_env.mac.yml for Mac builds (IMAGE_VARIANT=mac), otherwise use bio_env.yml
-    if [ "${IMAGE_VARIANT}" = "mac" ]; then
-        echo -e "${YELLOW}Detected Mac variant - using bio_env.mac.yml (excludes openmm)${NC}"
-        install_env_file "bio_env.mac.yml" "core bioinformatics tools"
+    # Use fixed_env.yml for reduced variant (faster, no solving, less memory)
+    # Use bio_env.yml for full variant (allows newer versions)
+    if [ -f "/.dockerenv" ] || [ -n "${USE_REDUCED_ENV}" ]; then
+        echo -e "${YELLOW}Using reduced environment - fixed_env.yml (pre-solved dependencies)${NC}"
+        install_env_file "fixed_env.yml" "core bioinformatics tools"
     else
         install_env_file "bio_env.yml" "core bioinformatics tools"
     fi
