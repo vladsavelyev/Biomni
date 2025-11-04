@@ -9,7 +9,6 @@ dependencies:
   - bowtie2
   - bwa
   - bedtools
-  - pybedtools
   - fastqc
   - trimmomatic
   - mafft
@@ -47,6 +46,7 @@ dependencies:
     - pysam
     - pyfaidx
     - pyranges
+    - pybedtools
     - openmm
     - pystan
     - igraph
