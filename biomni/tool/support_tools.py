@@ -27,20 +27,11 @@ def run_python_repl(command: str) -> str:
         global _persistent_namespace
 
         # Get output directory with backward compatibility
-        output_dir = os.environ.get('AGENT_OUTPUT_ARTIFACTS_DIR')
-        if not output_dir:
-            output_dir = os.environ.get('DATA_DIR', '/app/data')
-            if os.environ.get('DATA_DIR'):
-                warnings.warn(
-                    "DATA_DIR is deprecated. Please use AGENT_OUTPUT_ARTIFACTS_DIR instead.",
-                    DeprecationWarning,
-                    stacklevel=3
-                )
-
-        # Save current working directory and change to output directory
         old_cwd = os.getcwd()
-        os.makedirs(output_dir, exist_ok=True)
-        os.chdir(output_dir)
+        if output_dir := os.environ.get('AGENT_OUTPUT_ARTIFACTS_DIR'):
+            # Save current working directory and change to output directory
+            os.makedirs(output_dir, exist_ok=True)
+            os.chdir(output_dir)
 
         try:
             # Apply matplotlib monkey patches before execution
