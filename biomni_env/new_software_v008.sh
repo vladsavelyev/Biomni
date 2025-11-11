@@ -14,3 +14,4 @@ pip install nnunet nibabel nilearn
 pip install mi-googlesearch-python
 pip install git+https://github.com/pylabrobot/pylabrobot.git
 pip install weasyprint
+pip install langchain-aws
