@@ -241,20 +241,46 @@ def advanced_web_search_claude(
         from biomni.config import default_config
 
         model = default_config.llm
-        api_key = default_config.api_key
-        if not api_key:
-            api_key = os.getenv("ANTHROPIC_API_KEY")
     except ImportError:
         model = "claude-4-sonnet-latest"
-        api_key = os.getenv("ANTHROPIC_API_KEY")
 
     if "claude" not in model:
         raise ValueError("Model must be a Claude model.")
 
-    if not api_key:
-        raise ValueError("Set your api_key explicitly.")
+    # Detect if we should use Bedrock based on model name prefix or environment
+    use_bedrock = (
+        model.startswith(("anthropic.claude-", "us.", "eu."))
+        or os.getenv("BEDROCK_MODEL_NAME")
+        or os.getenv("AWS_PROFILE")
+    )
 
-    client = anthropic.Anthropic(api_key=api_key)
+    if use_bedrock:
+        # Use AWS Bedrock
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+        aws_profile = os.getenv("AWS_PROFILE")
+        bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
+
+        client = anthropic.AnthropicBedrock(
+            aws_region=aws_region,
+            aws_profile=aws_profile,
+        )
+        # Use the Bedrock model name
+        model = bedrock_model
+    else:
+        # Use direct Anthropic API
+        try:
+            from biomni.config import default_config
+
+            api_key = default_config.api_key
+            if not api_key:
+                api_key = os.getenv("ANTHROPIC_API_KEY")
+        except ImportError:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+
+        if not api_key:
+            raise ValueError("Set your ANTHROPIC_API_KEY or configure AWS Bedrock (AWS_PROFILE/AWS_REGION).")
+
+        client = anthropic.Anthropic(api_key=api_key)
     tool_def = {
         "type": "web_search_20250305",
         "name": "web_search",
