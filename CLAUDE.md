@@ -1,0 +1,5 @@
+- **Error handling**:
+  - **DO NOT** use try-catch blocks unless absolutely necessary.
+  - Let exceptions propagate naturally so users see full tracebacks.
+  - Only catch exceptions when you can actually handle them meaningfully (e.g., retry logic, cleanup, fallback behavior).
+  - DO NOT catch exceptions just to print them and re-raise or exit - the interpreter does this better.
