@@ -55,8 +55,8 @@ RUN cd /tmp/biomni_env && \
     /opt/conda/envs/biomni_e1/bin/python --version
 
 # Save new_software script for next layer
-RUN test -f /tmp/biomni_env/new_software_v007.sh || { echo "ERROR: new_software_v007.sh not found"; exit 1; } && \
-    cp /tmp/biomni_env/new_software_v007.sh /tmp/new_software_v007.sh
+RUN test -f /tmp/biomni_env/new_software_v008.sh || { echo "ERROR: new_software_v008.sh not found"; exit 1; } && \
+    cp /tmp/biomni_env/new_software_v008.sh /tmp/new_software_v008.sh
 
 # Clean up conda packages (separate layer for better caching)
 RUN conda clean -afy && \
@@ -73,8 +73,9 @@ RUN /opt/conda/envs/biomni_e1/bin/pip uninstall -y torch torchvision torchaudio 
     mamba install -n biomni_e1 -c pytorch cpuonly pytorch -y
 
 # Install additional dependencies (separate layer)
-RUN bash /tmp/new_software_v007.sh && \
-    rm /tmp/new_software_v007.sh
+# Ensure conda environment's pip is used by setting PATH
+RUN PATH="/opt/conda/envs/biomni_e1/bin:$PATH" bash /tmp/new_software_v008.sh && \
+    rm /tmp/new_software_v008.sh
 
 # Clean up
 RUN conda clean -afy && \
