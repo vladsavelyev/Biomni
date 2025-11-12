@@ -1287,6 +1287,9 @@ Each library is listed with its description to help you understand its functiona
             custom_software=custom_software if custom_software else None,
         )
 
+        # Inject all registered tools into execution namespace
+        self._inject_tools_into_namespace()
+
         # Define the nodes
         def generate(state: AgentState) -> AgentState:
             messages = [SystemMessage(content=self.system_prompt)] + state["messages"]
@@ -1767,6 +1770,9 @@ Each library is listed with its description to help you understand its functiona
             custom_software=custom_software if custom_software else None,
         )
 
+        # Inject all registered tools into execution namespace
+        self._inject_tools_into_namespace()
+
         # Print the raw system prompt for debugging
         # print("\n" + "="*20 + " RAW SYSTEM PROMPT FROM AGENT " + "="*20)
         # print(self.system_prompt)
@@ -1817,6 +1823,38 @@ Each library is listed with its description to help you understand its functiona
         module2api = getattr(self, "module2api", {})
         custom_functions = getattr(self, "_custom_functions", {})
         return parse_tool_calls_with_modules(code, module2api, custom_functions)
+
+    def _inject_tools_into_namespace(self):
+        """Inject all registered tools from module2api into the Python REPL execution environment.
+        This makes tools available during code execution without requiring explicit imports.
+        """
+        import importlib
+
+        from biomni.tool.support_tools import _persistent_namespace
+
+        tools_to_inject = {}
+
+        # Iterate through all modules and their tools
+        for module_name, tools in self.module2api.items():
+            try:
+                # Import the module
+                module = importlib.import_module(module_name)
+
+                # Get each tool function and add to injection dict
+                for tool in tools:
+                    tool_name = tool.get("name")
+                    if tool_name and hasattr(module, tool_name):
+                        func = getattr(module, tool_name)
+                        tools_to_inject[tool_name] = func
+            except (ImportError, AttributeError) as e:
+                # Skip tools that can't be imported (might be from MCP or other sources)
+                print(f"Note: Could not auto-import tools from {module_name}: {e}")
+                continue
+
+        # Inject all tools into the persistent namespace
+        _persistent_namespace.update(tools_to_inject)
+
+        print(f"Auto-injected {len(tools_to_inject)} tools into execution namespace")
 
     def _inject_custom_functions_to_repl(self):
         """Inject custom functions into the Python REPL execution environment.
