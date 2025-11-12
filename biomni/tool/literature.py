@@ -87,7 +87,7 @@ def fetch_supplementary_info_from_doi(doi: str, output_dir: str = "supplementary
     return "\n".join(research_log)
 
 
-def query_arxiv(query: str, max_papers: int = 10) -> str:
+def query_arxiv(query: str, max_papers: int = 10) -> list[dict[str, str | None]]:
     """Query arXiv for papers based on the provided search query.
 
     Parameters
@@ -97,21 +97,37 @@ def query_arxiv(query: str, max_papers: int = 10) -> str:
 
     Returns
     -------
-    - str: The formatted search results or an error message.
+    - list[dict]: List of paper dictionaries with keys: title, summary, authors, published, arxiv_id, pdf_url.
+      Returns empty list if no papers found or error occurs.
+
+    Example
+    -------
+    >>> results = query_arxiv("machine learning transformers", max_papers=5)
+    >>> for paper in results:
+    ...     print(f"Title: {paper['title']}")
+    ...     print(f"PDF: {paper.get('pdf_url', 'N/A')}")
 
     """
     import arxiv
 
-    try:
-        client = arxiv.Client()
-        search = arxiv.Search(query=query, max_results=max_papers, sort_by=arxiv.SortCriterion.Relevance)
-        results = "\n\n".join([f"Title: {paper.title}\nSummary: {paper.summary}" for paper in client.results(search)])
-        return results if results else "No papers found on arXiv."
-    except Exception as e:
-        return f"Error querying arXiv: {e}"
+    client = arxiv.Client()
+    search = arxiv.Search(query=query, max_results=max_papers, sort_by=arxiv.SortCriterion.Relevance)
+
+    results = []
+    for paper in client.results(search):
+        results.append({
+            "title": paper.title or "No title",
+            "summary": paper.summary or "",
+            "authors": ", ".join([author.name for author in paper.authors]) if paper.authors else "",
+            "published": str(paper.published) if paper.published else None,
+            "arxiv_id": paper.entry_id or None,
+            "pdf_url": paper.pdf_url or None,
+        })
+
+    return results
 
 
-def query_scholar(query: str) -> str:
+def query_scholar(query: str) -> dict[str, str] | None:
     """Query Google Scholar for papers based on the provided search query.
 
     Parameters
@@ -120,23 +136,34 @@ def query_scholar(query: str) -> str:
 
     Returns
     -------
-    - str: The first search result formatted or an error message.
+    - dict | None: Dictionary with keys: title, year, venue, abstract, or None if no results found.
+
+    Example
+    -------
+    >>> result = query_scholar("CRISPR gene editing")
+    >>> if result:
+    ...     print(f"Title: {result['title']}")
+    ...     print(f"Year: {result.get('year', 'N/A')}")
 
     """
     from scholarly import scholarly
 
-    try:
-        search_query = scholarly.search_pubs(query)
-        result = next(search_query, None)
-        if result:
-            return f"Title: {result['bib']['title']}\nYear: {result['bib']['pub_year']}\nVenue: {result['bib']['venue']}\nAbstract: {result['bib']['abstract']}"
-        else:
-            return "No results found on Google Scholar."
-    except Exception as e:
-        return f"Error querying Google Scholar: {e}"
+    search_query = scholarly.search_pubs(query)
+    result = next(search_query, None)
+
+    if not result:
+        return None
+
+    bib = result.get("bib", {})
+    return {
+        "title": bib.get("title", "No title"),
+        "year": bib.get("pub_year", ""),
+        "venue": bib.get("venue", ""),
+        "abstract": bib.get("abstract", ""),
+    }
 
 
-def query_pubmed(query: str, max_papers: int = 10, max_retries: int = 3) -> str:
+def query_pubmed(query: str, max_papers: int = 10, max_retries: int = 3) -> list[dict[str, str | None]]:
     """Query PubMed for papers based on the provided search query.
 
     Parameters
@@ -147,74 +174,89 @@ def query_pubmed(query: str, max_papers: int = 10, max_retries: int = 3) -> str:
 
     Returns
     -------
-    - str: The formatted search results or an error message.
+    - list[dict]: List of paper dictionaries with keys: title, abstract, journal, pmid, pub_date.
+      Returns empty list if no papers found or error occurs.
+
+    Example
+    -------
+    >>> results = query_pubmed("CRISPR HEK293T", max_papers=5)
+    >>> for paper in results:
+    ...     print(f"Title: {paper['title']}")
+    ...     print(f"PMID: {paper.get('pmid', 'N/A')}")
 
     """
     from pymed import PubMed
 
-    try:
-        pubmed = PubMed(tool="MyTool", email="your-email@example.com")  # Update with a valid email address
+    pubmed = PubMed(tool="MyTool", email="your-email@example.com")  # Update with a valid email address
 
-        # Initial attempt
-        papers = list(pubmed.query(query, max_results=max_papers))
+    # Initial attempt
+    papers = list(pubmed.query(query, max_results=max_papers))
 
-        # Retry with modified queries if no results
-        retries = 0
-        while not papers and retries < max_retries:
-            retries += 1
-            # Simplify query with each retry by removing the last word
-            simplified_query = " ".join(query.split()[:-retries]) if len(query.split()) > retries else query
-            time.sleep(1)  # Add delay between requests
-            papers = list(pubmed.query(simplified_query, max_results=max_papers))
+    # Retry with modified queries if no results
+    retries = 0
+    while not papers and retries < max_retries:
+        retries += 1
+        # Simplify query with each retry by removing the last word
+        simplified_query = " ".join(query.split()[:-retries]) if len(query.split()) > retries else query
+        time.sleep(1)  # Add delay between requests
+        papers = list(pubmed.query(simplified_query, max_results=max_papers))
 
-        if papers:
-            results = "\n\n".join(
-                [f"Title: {paper.title}\nAbstract: {paper.abstract}\nJournal: {paper.journal}" for paper in papers]
-            )
-            return results
-        else:
-            return "No papers found on PubMed after multiple query attempts."
-    except Exception as e:
-        return f"Error querying PubMed: {e}"
+    if not papers:
+        return []
+
+    # Convert to structured data
+    results = []
+    for paper in papers:
+        results.append({
+            "title": paper.title or "No title",
+            "abstract": paper.abstract or "",
+            "journal": paper.journal or "",
+            "pmid": getattr(paper, "pubmed_id", None),
+            "pub_date": str(getattr(paper, "publication_date", "")) if hasattr(paper, "publication_date") else None,
+        })
+    return results
 
 
-def search_google(query: str, num_results: int = 3, language: str = "en") -> list[dict]:
+def search_google(query: str, num_results: int = 3, language: str = "en") -> list[dict[str, str]]:
     """Search using Google search.
 
     Args:
         query (str): The search query (e.g., "protocol text or seach question")
-        num_results (int): Number of results to return (default: 10)
+        num_results (int): Number of results to return (default: 3)
         language (str): Language code for search results (default: 'en')
-        pause (float): Pause between searches to avoid rate limiting (default: 2.0 seconds)
 
     Returns:
-        List[dict]: List of dictionaries containing search results with title and URL
+        list[dict]: List of dictionaries containing search results with keys: title, url, description.
+          Returns empty list if error occurs.
+
+    Example:
+        >>> results = search_google("CRISPR protocols", num_results=5)
+        >>> for result in results:
+        ...     print(f"Title: {result['title']}")
+        ...     print(f"URL: {result['url']}")
 
     """
-    try:
-        results_string = ""
-        search_query = f"{query}"
+    results_list = []
+    search_query = f"{query}"
 
-        print(f"Searching for {search_query} with {num_results} results and {language} language")
+    print(f"Searching for {search_query} with {num_results} results and {language} language")
 
-        for res in search(search_query, num_results=num_results, lang=language, advanced=True):
-            print(f"Found result: {res.title}")
-            title = res.title
-            url = res.url
-            description = res.description
+    for res in search(search_query, num_results=num_results, lang=language, advanced=True):
+        print(f"Found result: {res.title}")
+        results_list.append({
+            "title": res.title or "",
+            "url": res.url or "",
+            "description": res.description or "",
+        })
 
-            results_string += f"Title: {title}\nURL: {url}\nDescription: {description}\n\n"
-
-    except Exception as e:
-        print(f"Error performing search: {str(e)}")
-    return results_string
+    return results_list
 
 
 def advanced_web_search_claude(
     query: str,
     max_searches: int = 1,
     max_retries: int = 3,
-) -> tuple[str, list[dict[str, str]], list]:
+) -> str:
     """
     Initiate an advanced web search by launching a specialized agent to collect relevant information and citations through multiple rounds of web searches for a given query.
     Craft the query carefully for the search agent to find the most relevant information.
@@ -230,8 +272,14 @@ def advanced_web_search_claude(
 
     Returns
     -------
-    full_text : str
-        A formatted string containing the full text response from Claude and the citations.
+    str
+        A formatted string containing the full text response from Claude with inline citations.
+        Format: "...text...(Citation: Title - URL)...more text..."
+
+    Example
+    -------
+    >>> result = advanced_web_search_claude("latest CRISPR delivery methods", max_searches=3)
+    >>> print(result)  # Contains answer with inline citations
     """
     import random
 
