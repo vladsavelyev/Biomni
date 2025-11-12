@@ -202,7 +202,7 @@ class A1:
         self.use_tool_retriever = use_tool_retriever
 
         if self.use_tool_retriever:
-            self.tool_registry = ToolRegistry(module2api)
+            self.tool_registry = ToolRegistry(module2api, blacklist=default_config.tool_blacklist)
             self.retriever = ToolRetriever()
 
         # Add timeout parameter

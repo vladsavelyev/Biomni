@@ -49,6 +49,9 @@ class BiomniConfig:
     # LLM source (auto-detected if None)
     source: str | None = None
 
+    # Tool blacklist - list of tool names to exclude from registration
+    tool_blacklist: list[str] | None = None
+
     def __post_init__(self):
         """Load any environment variable overrides if they exist."""
         # Check for environment variable overrides (optional)
@@ -71,6 +74,8 @@ class BiomniConfig:
             self.api_key = os.getenv("BIOMNI_CUSTOM_API_KEY")
         if os.getenv("BIOMNI_SOURCE"):
             self.source = os.getenv("BIOMNI_SOURCE")
+        if os.getenv("BIOMNI_TOOL_BLACKLIST"):
+            self.tool_blacklist = [tool.strip() for tool in os.getenv("BIOMNI_TOOL_BLACKLIST").split(",")]
 
     def to_dict(self) -> dict:
         """Convert config to dictionary for easy access."""
@@ -84,6 +89,7 @@ class BiomniConfig:
             "base_url": self.base_url,
             "api_key": self.api_key,
             "source": self.source,
+            "tool_blacklist": self.tool_blacklist,
         }
 
 

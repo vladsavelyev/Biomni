@@ -312,7 +312,6 @@ def advanced_web_search_claude(
             aws_region=aws_region,
             aws_profile=aws_profile,
         )
-        # Use the Bedrock model name
         model = bedrock_model
     else:
         # Use direct Anthropic API
@@ -329,6 +328,7 @@ def advanced_web_search_claude(
             raise ValueError("Set your ANTHROPIC_API_KEY or configure AWS Bedrock (AWS_PROFILE/AWS_REGION).")
 
         client = anthropic.Anthropic(api_key=api_key)
+
     tool_def = {
         "type": "web_search_20250305",
         "name": "web_search",

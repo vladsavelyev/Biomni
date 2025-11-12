@@ -77,7 +77,7 @@ class react:
         self.library_content_dict = library_content_dict
 
         if self.use_tool_retriever:
-            self.tool_registry = ToolRegistry(module2api)
+            self.tool_registry = ToolRegistry(module2api, blacklist=default_config.tool_blacklist)
             self.retriever = ToolRetriever()
 
         self.timeout_seconds = timeout_seconds  # 10 minutes default timeout

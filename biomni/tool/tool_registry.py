@@ -4,9 +4,10 @@ import pandas as pd
 
 
 class ToolRegistry:
-    def __init__(self, tools):
+    def __init__(self, tools, blacklist: list[str] | None = None):
         self.tools = []
         self.next_id = 0
+        self.blacklist = blacklist or []
 
         for j in tools.values():
             for tool in j:
@@ -22,10 +23,18 @@ class ToolRegistry:
         #    self.langchain_tools.update({self.get_id_by_name(api['name']): api_schema_to_langchain_tool(api, mode = 'custom_tool', module_name = module) for api in api_list})
 
     def register_tool(self, tool):
+        tool_name = tool.get("name", "")
+
+        # Check if tool is blacklisted
+        if tool_name in self.blacklist:
+            print(f"Tool '{tool_name}' is blacklisted and will not be registered")
+            return False
+
         if self.validate_tool(tool):
             tool["id"] = self.next_id
             self.tools.append(tool)
             self.next_id += 1
+            return True
         else:
             raise ValueError("Invalid tool format")
 
