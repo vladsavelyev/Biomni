@@ -227,3 +227,5 @@ data/ddinter_raw/
 # Sphinx build
 /docs/build/
 /docs/source/api/
+
+.pybiomart.sqlite
