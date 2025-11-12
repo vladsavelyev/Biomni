@@ -17,6 +17,8 @@ def get_llm(
     source: SourceType | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
+    max_tokens: int | None = None,
+    llm_timeout: int | None = None,
     config: Optional["BiomniConfig"] = None,
 ) -> BaseChatModel:
     """
@@ -30,14 +32,20 @@ def get_llm(
                       If None, will attempt to auto-detect from model name
         base_url (str): The base URL for custom model serving (e.g., "http://localhost:8000/v1"), default is None
         api_key (str): The API key for the custom llm
+        max_tokens (int): Maximum output tokens for generation
+        llm_timeout (int): Timeout in seconds for LLM API calls (Bedrock read timeout)
         config (BiomniConfig): Optional configuration object. If provided, unspecified parameters will use config values
     """
     # Use config values for any unspecified parameters
     if config is not None:
         if model is None:
-            model = config.llm_model
+            model = config.llm
         if temperature is None:
             temperature = config.temperature
+        if max_tokens is None:
+            max_tokens = config.max_tokens
+        if llm_timeout is None:
+            llm_timeout = config.llm_timeout
         if source is None:
             source = config.source
         if base_url is None:
@@ -50,6 +58,10 @@ def get_llm(
         model = "claude-3-5-sonnet-20241022"
     if temperature is None:
         temperature = 0.7
+    if max_tokens is None:
+        max_tokens = 8192
+    if llm_timeout is None:
+        llm_timeout = 300
     if api_key is None:
         api_key = "EMPTY"
     # Auto-detect source from model name if not specified
@@ -131,7 +143,7 @@ def get_llm(
         return ChatAnthropic(
             model=model,
             temperature=temperature,
-            max_tokens=8192,
+            max_tokens=max_tokens,
             stop_sequences=stop_sequences,
         )
 
@@ -186,15 +198,28 @@ def get_llm(
     elif source == "Bedrock":
         try:
             from langchain_aws import ChatBedrock
+            from botocore.config import Config
         except ImportError:
             raise ImportError(  # noqa: B904
                 "langchain-aws package is required for Bedrock models. Install with: pip install langchain-aws"
             )
+
+        # Configure longer timeouts for large token generation
+        # Connect timeout: time to establish connection (default 60s)
+        # Read timeout: time to receive response (configurable, default 300s)
+        boto_config = Config(
+            connect_timeout=60,
+            read_timeout=llm_timeout,
+            retries={'max_attempts': 3, 'mode': 'standard'}
+        )
+
         return ChatBedrock(
             model=model,
             temperature=temperature,
+            max_tokens=max_tokens,
             stop_sequences=stop_sequences,
             region_name=os.getenv("AWS_REGION", "us-east-1"),
+            config=boto_config,
         )
 
     elif source == "Custom":
@@ -209,7 +234,7 @@ def get_llm(
         llm = ChatOpenAI(
             model=model,
             temperature=temperature,
-            max_tokens=8192,
+            max_tokens=max_tokens,
             stop_sequences=stop_sequences,
             base_url=base_url,
             api_key=api_key,

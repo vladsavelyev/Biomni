@@ -7,6 +7,15 @@ Maintains full backward compatibility with existing code.
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env file from the project root if it exists
+# This ensures environment variables are available when default_config is created
+env_file = Path(__file__).parent.parent / ".env"
+if env_file.exists():
+    load_dotenv(env_file, override=False)
 
 
 @dataclass
@@ -35,6 +44,8 @@ class BiomniConfig:
     # LLM settings (API keys still from environment)
     llm: str = "claude-sonnet-4-5"
     temperature: float = 0.7
+    max_tokens: int = 8192  # Maximum output tokens (Claude 3.5 Sonnet max is 8192)
+    llm_timeout: int = 300  # LLM API timeout in seconds (for Bedrock/API calls)
 
     # Tool settings
     use_tool_retriever: bool = True
@@ -68,6 +79,10 @@ class BiomniConfig:
             self.commercial_mode = os.getenv("BIOMNI_COMMERCIAL_MODE").lower() == "true"
         if os.getenv("BIOMNI_TEMPERATURE"):
             self.temperature = float(os.getenv("BIOMNI_TEMPERATURE"))
+        if os.getenv("BIOMNI_MAX_TOKENS"):
+            self.max_tokens = int(os.getenv("BIOMNI_MAX_TOKENS"))
+        if os.getenv("BIOMNI_LLM_TIMEOUT"):
+            self.llm_timeout = int(os.getenv("BIOMNI_LLM_TIMEOUT"))
         if os.getenv("BIOMNI_CUSTOM_BASE_URL"):
             self.base_url = os.getenv("BIOMNI_CUSTOM_BASE_URL")
         if os.getenv("BIOMNI_CUSTOM_API_KEY"):
@@ -84,6 +99,8 @@ class BiomniConfig:
             "timeout_seconds": self.timeout_seconds,
             "llm": self.llm,
             "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "llm_timeout": self.llm_timeout,
             "use_tool_retriever": self.use_tool_retriever,
             "commercial_mode": self.commercial_mode,
             "base_url": self.base_url,
