@@ -2,6 +2,7 @@ import glob
 import inspect
 import os
 import re
+import warnings
 from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,10 @@ from typing import Any, Literal, TypedDict
 
 import pandas as pd
 from dotenv import load_dotenv
+
+# Suppress FutureWarnings from scanpy/anndata version checking
+warnings.filterwarnings("ignore", category=FutureWarning, module="scanpy.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="anndata.*")
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.checkpoint.memory import MemorySaver
@@ -1348,6 +1353,7 @@ Each library is listed with its description to help you understand its functiona
 
         def execute(state: AgentState) -> AgentState:
             last_message = state["messages"][-1].content
+
             # Only add the closing tag if it's not already there
             if "<execute>" in last_message and "</execute>" not in last_message:
                 last_message += "</execute>"
@@ -1853,8 +1859,6 @@ Each library is listed with its description to help you understand its functiona
 
         # Inject all tools into the persistent namespace
         _persistent_namespace.update(tools_to_inject)
-
-        print(f"Auto-injected {len(tools_to_inject)} tools into execution namespace")
 
     def _inject_custom_functions_to_repl(self):
         """Inject custom functions into the Python REPL execution environment.

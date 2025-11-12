@@ -3,10 +3,15 @@ import inspect
 import json
 import os
 import signal
+import warnings
 from collections.abc import Sequence
 from functools import wraps
 from multiprocessing import Process, Queue
 from typing import Annotated, TypedDict
+
+# Suppress FutureWarnings from scanpy/anndata version checking
+warnings.filterwarnings("ignore", category=FutureWarning, module="scanpy.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="anndata.*")
 
 from langchain_core.messages import BaseMessage, SystemMessage, ToolMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
