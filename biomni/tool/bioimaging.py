@@ -1,6 +1,8 @@
 import logging
 import os
+import sys
 import zipfile
+from contextlib import contextmanager
 
 import matplotlib
 import requests
@@ -11,7 +13,23 @@ import numpy as np
 import SimpleITK as sitk
 import torch
 import torch.serialization
-from nnunet.inference.predict import predict_from_folder
+
+
+@contextmanager
+def suppress_stdout():
+    """Context manager to temporarily suppress stdout"""
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+
+
+# Suppress nnunet citation message during import
+with suppress_stdout():
+    from nnunet.inference.predict import predict_from_folder
 
 # Apply safe globals for torch serialization
 torch.serialization.add_safe_globals([tuple, list, dict, set, int, float, str, bytes, bytearray])
