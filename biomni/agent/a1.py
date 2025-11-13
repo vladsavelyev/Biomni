@@ -1,7 +1,9 @@
 import glob
 import inspect
+import json
 import os
 import re
+import typing
 import warnings
 from collections.abc import Generator
 from datetime import datetime
@@ -69,6 +71,7 @@ class A1:
         api_key: str | None = None,
         commercial_mode: bool | None = None,
         expected_data_lake_files: list | None = None,
+        progress_callback: typing.Callable | None = None,
     ):
         """Initialize the biomni agent.
 
@@ -81,6 +84,8 @@ class A1:
             base_url: Base URL for custom model serving (e.g., "http://localhost:8000/v1")
             api_key: API key for the custom LLM
             commercial_mode: If True, excludes datasets that require commercial licenses or are non-commercial only
+            progress_callback: Optional callback function for progress notifications.
+                             Should accept (message: str, type: str, content: str | None)
 
         """
         # Use default_config values for unspecified parameters
@@ -126,7 +131,7 @@ class A1:
         agent_source = source if source is not None else default_config.source
 
         # Show default config (database LLM)
-        print("📋 DEFAULT CONFIG (Including Database LLM):")
+        print("📋 LOADED CONFIG (Including Database LLM and .env):")
         config_dict = default_config.to_dict()
         for key, value in config_dict.items():
             if value is not None:
@@ -212,7 +217,24 @@ class A1:
 
         # Add timeout parameter
         self.timeout_seconds = timeout_seconds  # 10 minutes default timeout
+
+        # Store progress callback
+        self.progress_callback = progress_callback
+
         self.configure()
+
+    def _notify_progress(self, message: str, notification_type: str = "status", content: str | None = None, content_format: str | None = None):
+        """Send progress notification via callback if available.
+
+        Args:
+            message: Human-readable progress message
+            notification_type: Type of notification - "status", "thinking", "code", "observation", "solution"
+            content: Optional content (e.g., the actual code being executed, observation text, solution text)
+            content_format: Format of content: 'markdown' or 'text' (default: text)
+        """
+        print(f"Progress update ({notification_type}): {message}, {len(content) if content else 0} chars")
+        if self.progress_callback:
+            self.progress_callback(message, notification_type, content)  # not passing content_format just because it looks better in plain
 
     def add_tool(self, api):
         """Add a new tool to the agent's tool registry and make it available for retrieval.
@@ -1298,32 +1320,82 @@ Each library is listed with its description to help you understand its functiona
         # Define the nodes
         def generate(state: AgentState) -> AgentState:
             messages = [SystemMessage(content=self.system_prompt)] + state["messages"]
-            response = self.llm.invoke(messages)
 
-            # Parse the response
-            msg = str(response.content)
+            # Stream LLM response and parse blocks as they arrive
+            # IMPORTANT: Implement manual stop sequences since Claude through Bedrock ignores them
+            msg = ""
+            current_block = {"type": None, "content": "", "start": None, "tag_start": None}
+            planning_sent = False
+
+            for chunk in self.llm.stream(messages):
+                if hasattr(chunk, "content"):
+                    chunk_text = str(chunk.content)
+                    msg += chunk_text
+
+                    # Check for block start tags
+                    if "<execute>" in msg and current_block["type"] is None:
+                        last_start = msg.rfind("<execute>")
+                        current_block = {"type": "execute", "content": "", "start": last_start + 9, "tag_start": last_start}
+                    elif "<solution>" in msg and current_block["type"] is None:
+                        last_start = msg.rfind("<solution>")
+                        current_block = {"type": "solution", "content": "", "start": last_start + 10, "tag_start": last_start}
+
+                    # Check for stop sequences and STOP streaming manually
+                    # Stop after </execute> or </solution> to prevent multiple blocks
+                    if current_block["type"] == "execute" and "</execute>" in msg[current_block["start"]:]:
+                        # Found closing tag - extract content and STOP
+                        end_idx = msg.index("</execute>", current_block["start"])
+
+                        # Send notification for thinking text (if any exists before tag)
+                        planning_text = msg[:current_block["tag_start"]].strip()
+                        if planning_text:
+                            self._notify_progress("📝 Planning", "thinking", content=planning_text, content_format="markdown")
+                        elif not planning_sent:
+                            # No thinking text, just send status update
+                            self._notify_progress("📝 Planning", "thinking")
+                        planning_sent = True
+
+                        # Include the closing tag in the message, then stop
+                        # Note: Code will be shown when actually executed in execute() node
+                        msg = msg[:end_idx + len("</execute>")]
+                        break
+                    elif current_block["type"] == "solution" and "</solution>" in msg[current_block["start"]:]:
+                        # Found closing tag - extract content and STOP
+                        end_idx = msg.index("</solution>", current_block["start"])
+
+                        # Send notification for thinking text (if any exists before tag)
+                        planning_text = msg[:current_block["tag_start"]].strip()
+                        if planning_text:
+                            self._notify_progress("📝 Planning", "thinking", content=planning_text, content_format="markdown")
+                        elif not planning_sent:
+                            # No thinking text, just send status update
+                            self._notify_progress("📝 Planning", "thinking")
+                        planning_sent = True
+
+                        # Send notification for the solution
+                        sol_content = msg[current_block["start"]:end_idx].strip()
+                        self._notify_progress("✅ Solution found", "solution", content=sol_content, content_format="markdown")
+
+                        # Include the closing tag in the message, then stop
+                        msg = msg[:end_idx + len("</solution>")]
+                        break
 
             # Check for incomplete tags and fix them
             if "<execute>" in msg and "</execute>" not in msg:
                 msg += "</execute>"
             if "<solution>" in msg and "</solution>" not in msg:
                 msg += "</solution>"
-            if "<think>" in msg and "</think>" not in msg:
-                msg += "</think>"
 
-            think_match = re.search(r"<think>(.*?)</think>", msg, re.DOTALL)
-            execute_match = re.search(r"<execute>(.*?)</execute>", msg, re.DOTALL)
-            answer_match = re.search(r"<solution>(.*?)</solution>", msg, re.DOTALL)
-
-            # Add the message to the state before checking for errors
+            # Add the message to the state
             state["messages"].append(AIMessage(content=msg.strip()))
 
-            if answer_match:
+            # Determine next step based on what was in the response
+            # Note: notifications were already sent during streaming
+            if "<solution>" in msg:
                 state["next_step"] = "end"
-            elif execute_match:
+            elif "<execute>" in msg:
+                # Has code but no solution - route to execute for actual execution
                 state["next_step"] = "execute"
-            elif think_match:
-                state["next_step"] = "generate"
             else:
                 print("parsing error...")
 
@@ -1373,6 +1445,7 @@ Each library is listed with its description to help you understand its functiona
                 ):
                     # Remove the R marker and run as R code
                     r_code = re.sub(r"^#!R|^# R code|^# R script", "", code, count=1).strip()
+                    self._notify_progress("📊 Executing R code", "code", r_code)
                     result = run_with_timeout(run_r_code, [r_code], timeout=timeout)
                 # Check if the code is a Bash script or CLI command
                 elif (
@@ -1386,10 +1459,12 @@ Each library is listed with its description to help you understand its functiona
                         cli_command = re.sub(r"^#!CLI", "", code, count=1).strip()
                         # Remove any newlines to ensure it's a single command
                         cli_command = cli_command.replace("\n", " ")
+                        self._notify_progress("⚙️ Running CLI command", "code", cli_command)
                         result = run_with_timeout(run_bash_script, [cli_command], timeout=timeout)
                     else:
                         # For Bash scripts, remove the marker and run as a bash script
                         bash_script = re.sub(r"^#!BASH|^# Bash script", "", code, count=1).strip()
+                        self._notify_progress("⚙️ Running bash script", "code", bash_script)
                         result = run_with_timeout(run_bash_script, [bash_script], timeout=timeout)
                 # Otherwise, run as Python code
                 else:
@@ -1398,6 +1473,7 @@ Each library is listed with its description to help you understand its functiona
 
                     # Inject custom functions into the Python execution environment
                     self._inject_custom_functions_to_repl()
+                    self._notify_progress("🐍 Executing Python code", "code", code.strip())
                     result = run_with_timeout(run_python_repl, [code], timeout=timeout)
 
                     # Plots are now captured directly in the execution entry above
@@ -1432,6 +1508,7 @@ Each library is listed with its description to help you understand its functiona
                 self._execution_results.append(execution_entry)
 
                 observation = f"\n<observation>{result}</observation>"
+                self._notify_progress("📋 Execution result", "observation", result)
                 state["messages"].append(AIMessage(content=observation.strip()))
 
             return state
@@ -1578,6 +1655,8 @@ Each library is listed with its description to help you understand its functiona
             "libraries": library_descriptions,
         }
 
+        self._notify_progress("🔍 Selecting relevant tools and resources", "thinking")
+
         # Use prompt-based retrieval with the agent's LLM
         selected_resources = self.retriever.prompt_based_retrieval(prompt, resources, llm=self.llm)
         print("Using prompt-based retrieval with the agent's LLM")
@@ -1599,6 +1678,53 @@ Each library is listed with its description to help you understand its functiona
                 selected_resources_names["data_lake"].append(name)
             else:
                 selected_resources_names["data_lake"].append(item)
+
+        # Format selected resources nicely for display
+        content_lines = []
+
+        if selected_resources["tools"]:
+            content_lines.append("Tools:")
+            for tool in selected_resources["tools"]:
+                if isinstance(tool, dict):
+                    content_lines.append(f"- {tool.get('name', tool)}: {tool.get('description', '')}")
+                else:
+                    content_lines.append(f"- {tool}")
+
+        if selected_resources["data_lake"]:
+            if content_lines:
+                content_lines.append("")
+            content_lines.append("Datasets:")
+            for item in selected_resources["data_lake"]:
+                if isinstance(item, dict):
+                    content_lines.append(f"- {item.get('name', item)}: {item.get('description', '')}")
+                else:
+                    content_lines.append(f"- {item}")
+
+        if selected_resources["libraries"]:
+            if content_lines:
+                content_lines.append("")
+            content_lines.append("Libraries:")
+            for lib in selected_resources["libraries"]:
+                if isinstance(lib, dict):
+                    content_lines.append(f"- {lib.get('name', lib)}: {lib.get('description', '')}")
+                else:
+                    # Try to get description from library_content_dict
+                    desc = self.library_content_dict.get(lib, "")
+                    if desc:
+                        content_lines.append(f"- {lib}: {desc}")
+                    else:
+                        content_lines.append(f"- {lib}")
+
+        formatted_content = "\n".join(content_lines)
+
+        self._notify_progress(
+            f"🔧 Selected {len(selected_resources_names['tools'])} tools, "
+            f"{len(selected_resources_names['data_lake'])} datasets, "
+            f"{len(selected_resources_names['libraries'])} libraries",
+            "status",
+            content=formatted_content,
+            content_format="markdown",
+        )
 
         return selected_resources_names
 
