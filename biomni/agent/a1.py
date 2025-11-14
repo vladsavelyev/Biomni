@@ -232,7 +232,6 @@ class A1:
             content: Optional content (e.g., the actual code being executed, observation text, solution text)
             content_format: Format of content: 'markdown' or 'text' (default: text)
         """
-        print(f"Progress update ({notification_type}): {message}, {len(content) if content else 0} chars")
         if self.progress_callback:
             self.progress_callback(message, notification_type, content)  # not passing content_format just because it looks better in plain
 
