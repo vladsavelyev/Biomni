@@ -197,6 +197,7 @@ def get_llm(
 
     elif source == "Bedrock":
         try:
+            import boto3
             from langchain_aws import ChatBedrock
             from botocore.config import Config
         except ImportError:
@@ -213,14 +214,33 @@ def get_llm(
             retries={'max_attempts': 3, 'mode': 'standard'}
         )
 
-        return ChatBedrock(
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stop_sequences=stop_sequences,
-            region_name=os.getenv("AWS_REGION", "us-east-1"),
-            config=boto_config,
-        )
+        # Respect AWS_PROFILE if set
+        aws_profile = os.getenv("AWS_PROFILE")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+
+        # Use BEDROCK_MODEL_NAME if set
+        bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
+
+        # Create boto3 session with profile if specified
+        if aws_profile:
+            session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
+            bedrock_client = session.client('bedrock-runtime', config=boto_config)
+            return ChatBedrock(
+                client=bedrock_client,
+                model=bedrock_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stop_sequences=stop_sequences,
+            )
+        else:
+            return ChatBedrock(
+                model=bedrock_model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stop_sequences=stop_sequences,
+                region_name=aws_region,
+                config=boto_config,
+            )
 
     elif source == "Custom":
         try:
