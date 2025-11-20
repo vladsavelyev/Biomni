@@ -285,27 +285,17 @@ def advanced_web_search_claude(
 
     import anthropic
 
-    try:
-        from biomni.config import default_config
-
-        model = default_config.llm
-    except ImportError:
-        model = "claude-4-sonnet-latest"
-
+    model = os.environ["BIOMNI_LLM"]
     if "claude" not in model:
         raise ValueError("Model must be a Claude model.")
 
     # Detect if we should use Bedrock based on model name prefix or environment
-    use_bedrock = (
-        model.startswith(("anthropic.claude-", "us.", "eu."))
-        or os.getenv("BEDROCK_MODEL_NAME")
-        or os.getenv("AWS_PROFILE")
-    )
+    use_bedrock = os.environ["BIOMNI_SOURCE"] == "Bedrock"
 
     if use_bedrock:
         # Use AWS Bedrock
-        aws_region = os.getenv("AWS_REGION", "us-east-1")
         aws_profile = os.getenv("AWS_PROFILE")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
         bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
 
         client = anthropic.AnthropicBedrock(

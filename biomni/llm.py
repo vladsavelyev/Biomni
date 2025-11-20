@@ -106,6 +106,9 @@ def get_llm(
             else:
                 raise ValueError("Unable to determine model source. Please specify 'source' parameter.")
 
+    os.environ["BIOMNI_LLM"] = model  # Set for downstream use
+    os.environ["BIOMNI_SOURCE"] = source  # Set for downstream use
+
     # Create appropriate model based on source
     if source == "OpenAI":
         try:
