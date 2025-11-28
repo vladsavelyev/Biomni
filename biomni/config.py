@@ -41,6 +41,10 @@ class BiomniConfig:
     path: str = "./data"
     timeout_seconds: int = 600
 
+    # Python REPL execution settings
+    python_exec_timeout: int = 120  # Timeout for run_python_repl in seconds
+    python_exec_max_output_mb: float = 10.0  # Maximum output size in MB
+
     # LLM settings (API keys still from environment)
     llm: str = "claude-sonnet-4-5"
     temperature: float = 0.7
@@ -91,12 +95,18 @@ class BiomniConfig:
             self.source = os.getenv("BIOMNI_SOURCE")
         if os.getenv("BIOMNI_TOOL_BLACKLIST"):
             self.tool_blacklist = [tool.strip() for tool in os.getenv("BIOMNI_TOOL_BLACKLIST").split(",")]
+        if os.getenv("BIOMNI_PYTHON_EXEC_TIMEOUT"):
+            self.python_exec_timeout = int(os.getenv("BIOMNI_PYTHON_EXEC_TIMEOUT"))
+        if os.getenv("BIOMNI_PYTHON_EXEC_MAX_OUTPUT_MB"):
+            self.python_exec_max_output_mb = float(os.getenv("BIOMNI_PYTHON_EXEC_MAX_OUTPUT_MB"))
 
     def to_dict(self) -> dict:
         """Convert config to dictionary for easy access."""
         return {
             "path": self.path,
             "timeout_seconds": self.timeout_seconds,
+            "python_exec_timeout": self.python_exec_timeout,
+            "python_exec_max_output_mb": self.python_exec_max_output_mb,
             "llm": self.llm,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
