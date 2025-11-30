@@ -2,7 +2,6 @@ import base64
 import io
 import os
 import sys
-import threading
 from io import StringIO
 
 from biomni.config import default_config
@@ -20,34 +19,17 @@ def run_python_repl(command: str) -> str:
     Files created during execution will be saved to the agent output directory for persistence.
 
     SAFETY FEATURES:
-    - Timeout protection: Code execution is limited to 120 seconds (configurable)
     - Output size limiting: Output is truncated at 10MB to prevent memory exhaustion
-    - If code exceeds limits, execution is terminated with an error message
-
-    Note: Due to Python's threading limitations, code may continue running in background
-    after timeout, but output capture and agent interaction will be terminated.
+    - Timeout protection is handled by the run_with_timeout wrapper in the A1 agent
     """
 
-    # Get timeout and output limit from config
-    timeout_seconds = default_config.python_exec_timeout
+    # Get output limit from config
     max_output_bytes = int(default_config.python_exec_max_output_mb * 1024 * 1024)
 
-    # Strip code fences
-    command = command.strip("```").strip()
-
-    # Variables to store result and exception from thread
-    result_output = None
-    result_exception = None
-    execution_completed = False
-    output_truncated = False
-
-    def execute_in_repl_thread():
-        """Helper function to execute the command in the persistent environment (runs in thread)."""
-        nonlocal result_output, result_exception, execution_completed, output_truncated
-
+    def execute_in_repl(command: str) -> str:
+        """Helper function to execute the command in the persistent environment."""
         old_stdout = sys.stdout
-        mystdout = StringIO()
-        sys.stdout = mystdout
+        sys.stdout = mystdout = StringIO()
 
         # Use the persistent namespace
         global _persistent_namespace
@@ -65,13 +47,10 @@ def run_python_repl(command: str) -> str:
 
             # Execute the command in the persistent namespace
             exec(command, _persistent_namespace)
-
-            # Get output
             output = mystdout.getvalue()
 
-            # Check output size
+            # Check output size and truncate if necessary
             if len(output) > max_output_bytes:
-                output_truncated = True
                 truncate_point = max_output_bytes - 1000
                 if truncate_point < 0:
                     truncate_point = 0
@@ -89,54 +68,19 @@ def run_python_repl(command: str) -> str:
                     f"{'=' * 80}\n"
                 )
 
-            result_output = output
-            execution_completed = True
-
             # Capture any matplotlib plots that were generated
             # _capture_matplotlib_plots()
 
         except Exception as e:
-            result_output = f"Error: {str(e)}"
-            result_exception = e
-            execution_completed = True
+            output = f"Error: {str(e)}"
         finally:
             sys.stdout = old_stdout
             # Restore original working directory
             os.chdir(old_cwd)
+        return output
 
-    # Create and start the execution thread
-    exec_thread = threading.Thread(target=execute_in_repl_thread, daemon=True)
-    exec_thread.start()
-
-    # Wait for thread to complete with timeout
-    exec_thread.join(timeout=timeout_seconds)
-
-    # Check if thread is still alive (timeout occurred)
-    if exec_thread.is_alive():
-        error_msg = (
-            f"\n{'=' * 80}\n"
-            f"⚠️  EXECUTION TIMEOUT ⚠️\n"
-            f"Code execution exceeded the {timeout_seconds} second timeout limit.\n"
-            f"This usually indicates an infinite loop or very long-running computation.\n"
-            f"\n"
-            f"IMPORTANT: Due to Python threading limitations, the code may still be\n"
-            f"running in the background. Avoid running additional long-running code.\n"
-            f"\n"
-            f"Consider:\n"
-            f"  - Checking for infinite loops (while True without break conditions)\n"
-            f"  - Adding progress indicators or time limits in your code\n"
-            f"  - Breaking long computations into smaller chunks\n"
-            f"  - Using iterative approaches instead of recursive ones\n"
-            f"{'=' * 80}\n"
-        )
-        return error_msg
-
-    # Thread completed within timeout
-    if result_output is not None:
-        return result_output
-    else:
-        # This shouldn't happen, but handle it gracefully
-        return "Error: Code execution completed but no output was captured"
+    command = command.strip("```").strip()
+    return execute_in_repl(command)
 
 
 def _capture_matplotlib_plots():

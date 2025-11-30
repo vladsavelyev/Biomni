@@ -184,6 +184,10 @@ def run_with_timeout(func, args=None, kwargs=None, timeout=600):
     """Run a function with a timeout using threading instead of multiprocessing.
     This allows variables to persist in the global namespace between function calls.
     Returns the function result or a timeout error message.
+
+    WARNING: Due to Python's threading limitations, timed-out threads cannot be forcefully
+    terminated and will continue running in the background. The output capture is
+    disabled for zombie threads to prevent interference with subsequent executions.
     """
     if args is None:
         args = []
@@ -192,20 +196,43 @@ def run_with_timeout(func, args=None, kwargs=None, timeout=600):
 
     import ctypes
     import queue
+    import sys
     import threading
 
     result_queue = queue.Queue()
+    zombie_marker = threading.Event()  # Flag to mark zombie thread
 
-    def thread_func(func, args, kwargs, result_queue):
+    def thread_func(func, args, kwargs, result_queue, zombie_marker):
         """Function to run in a separate thread."""
         try:
+            # Check if this thread has been marked as a zombie (timed out)
+            # If so, suppress output to prevent interference
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+
             result = func(*args, **kwargs)
-            result_queue.put(("success", result))
+
+            # Only put result if not marked as zombie
+            if not zombie_marker.is_set():
+                result_queue.put(("success", result))
+        except SystemExit:
+            # Thread was terminated, don't put anything in queue
+            pass
         except Exception as e:
-            result_queue.put(("error", str(e)))
+            if not zombie_marker.is_set():
+                result_queue.put(("error", str(e)))
+        finally:
+            # Restore stdout/stderr
+            try:
+                if 'old_stdout' in locals():
+                    sys.stdout = old_stdout
+                if 'old_stderr' in locals():
+                    sys.stderr = old_stderr
+            except Exception:
+                pass
 
     # Start a separate thread
-    thread = threading.Thread(target=thread_func, args=(func, args, kwargs, result_queue))
+    thread = threading.Thread(target=thread_func, args=(func, args, kwargs, result_queue, zombie_marker))
     thread.daemon = True  # Set as daemon so it will be killed when main thread exits
     thread.start()
 
@@ -214,25 +241,43 @@ def run_with_timeout(func, args=None, kwargs=None, timeout=600):
 
     # Check if the thread is still running after timeout
     if thread.is_alive():
-        print(f"TIMEOUT: Code execution timed out after {timeout} seconds")
+        # Mark thread as zombie to suppress its output
+        zombie_marker.set()
 
-        # Unfortunately, there's no clean way to force terminate a thread in Python
-        # The recommended approach is to use daemon threads and let them be killed when main thread exits
-        # Here, we'll try to raise an exception in the thread to make it stop
+        print(f"\n{'=' * 80}")
+        print("⚠️  EXECUTION TIMEOUT - ZOMBIE THREAD WARNING")
+        print(f"Code execution exceeded {timeout} seconds and was terminated.")
+        print("\nDue to Python threading limitations, the code is STILL RUNNING in the")
+        print("background (zombie thread). Output from this thread will be suppressed")
+        print("but the code will continue executing until it completes or encounters an error.")
+        print("\nRECOMMENDATION: Avoid running additional code execution until this agent")
+        print("session is restarted, as the zombie thread may interfere with new executions.")
+        print(f"{'=' * 80}\n")
+
+        # Attempt to terminate the thread (unreliable but worth trying)
         try:
-            # Get thread ID and try to terminate it
             thread_id = thread.ident
             if thread_id:
-                # This is a bit dangerous and not 100% reliable
-                # It attempts to raise a SystemExit exception in the thread
-                res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), ctypes.py_object(SystemExit))
+                # Attempt to raise SystemExit in the thread
+                res = ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                    ctypes.c_long(thread_id), ctypes.py_object(SystemExit)
+                )
                 if res > 1:
-                    # Oops, we raised too many exceptions
+                    # Too many threads affected, undo
                     ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread_id), None)
         except Exception as e:
-            print(f"Error trying to terminate thread: {e}")
+            print(f"Note: Could not attempt thread termination: {e}")
 
-        return f"ERROR: Code execution timed out after {timeout} seconds. Please try with simpler inputs or break your task into smaller steps."
+        return (
+            f"ERROR: Code execution timed out after {timeout} seconds.\n"
+            f"The code may still be running in the background (zombie thread).\n"
+            f"Please check for infinite loops or very long-running computations.\n"
+            f"Consider:\n"
+            f"  - Breaking your task into smaller steps\n"
+            f"  - Adding explicit time limits or iteration counts in your code\n"
+            f"  - Using progress indicators to monitor execution\n"
+            f"  - Restarting the agent session if you suspect a zombie thread"
+        )
 
     # Get the result from the queue if available
     try:
