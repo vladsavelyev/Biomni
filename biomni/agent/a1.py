@@ -1648,7 +1648,7 @@ Each library is listed with its description to help you understand its functiona
         self._notify_progress("🔍 Selecting relevant tools and resources", "thinking")
 
         # Use prompt-based retrieval with the agent's LLM
-        selected_resources = self.retriever.prompt_based_retrieval(prompt, resources, llm=self.llm)
+        selected_resources, llm_response = self.retriever.prompt_based_retrieval(prompt, resources, llm=self.llm)
         print("Using prompt-based retrieval with the agent's LLM")
 
         # Extract the names from the selected resources for the system prompt
@@ -1672,8 +1672,13 @@ Each library is listed with its description to help you understand its functiona
         # Format selected resources nicely for display
         content_lines = []
 
+        # Prepend LLM response for debugging
+        if llm_response:
+            content_lines.append(llm_response.strip())
+            content_lines.append("")
+
         if selected_resources["tools"]:
-            content_lines.append("Tools:")
+            content_lines.append("**Selected Tools:**")
             for tool in selected_resources["tools"]:
                 if isinstance(tool, dict):
                     content_lines.append(f"- {tool.get('name', tool)}: {tool.get('description', '')}")
@@ -1683,7 +1688,7 @@ Each library is listed with its description to help you understand its functiona
         if selected_resources["data_lake"]:
             if content_lines:
                 content_lines.append("")
-            content_lines.append("Datasets:")
+            content_lines.append("**Selected Datasets:**")
             for item in selected_resources["data_lake"]:
                 if isinstance(item, dict):
                     content_lines.append(f"- {item.get('name', item)}: {item.get('description', '')}")
@@ -1693,7 +1698,7 @@ Each library is listed with its description to help you understand its functiona
         if selected_resources["libraries"]:
             if content_lines:
                 content_lines.append("")
-            content_lines.append("Libraries:")
+            content_lines.append("**Selected Libraries:**")
             for lib in selected_resources["libraries"]:
                 if isinstance(lib, dict):
                     content_lines.append(f"- {lib.get('name', lib)}: {lib.get('description', '')}")

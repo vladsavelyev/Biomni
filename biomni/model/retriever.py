@@ -11,7 +11,7 @@ class ToolRetriever:
     def __init__(self):
         pass
 
-    def prompt_based_retrieval(self, query: str, resources: dict, llm=None) -> dict:
+    def prompt_based_retrieval(self, query: str, resources: dict, llm=None) -> tuple[dict, str]:
         """Use a prompt-based approach to retrieve the most relevant resources for a query.
 
         Args:
@@ -21,7 +21,7 @@ class ToolRetriever:
             llm: Optional LLM instance to use for retrieval (if None, will create a new one)
 
         Returns:
-            A dictionary with the same keys, but containing only the most relevant resources
+            A tuple of (selected_resources_dict, llm_response_text)
 
         """
         # Create a prompt for the LLM to select relevant resources
@@ -79,6 +79,13 @@ IMPORTANT GUIDELINES:
             # For other LLM interfaces
             response_content = str(llm(prompt))
 
+        # DEBUG: Log the LLM response for troubleshooting
+        print("\n" + "="*50)
+        print("DEBUG: LLM Response for Tool Retrieval")
+        print("="*50)
+        print(response_content)
+        print("="*50 + "\n")
+
         # Parse the response to extract the selected indices
         selected_indices = self._parse_llm_response(response_content)
 
@@ -99,7 +106,7 @@ IMPORTANT GUIDELINES:
             ],
         }
 
-        return selected_resources
+        return selected_resources, response_content
 
     def _format_resources_for_prompt(self, resources: list) -> str:
         """Format resources for inclusion in the prompt."""
@@ -127,22 +134,38 @@ IMPORTANT GUIDELINES:
 
         # Extract indices for each category
         tools_match = re.search(r"TOOLS:\s*\[(.*?)\]", response, re.IGNORECASE)
-        if tools_match and tools_match.group(1).strip():
-            with contextlib.suppress(ValueError):
-                selected_indices["tools"] = [int(idx.strip()) for idx in tools_match.group(1).split(",") if idx.strip()]
+        if tools_match:
+            if tools_match.group(1).strip():
+                try:
+                    selected_indices["tools"] = [int(idx.strip()) for idx in tools_match.group(1).split(",") if idx.strip()]
+                except ValueError as e:
+                    print(f"WARNING: Failed to parse TOOLS indices: {e}")
+        else:
+            print("WARNING: No TOOLS section found in LLM response")
 
         data_lake_match = re.search(r"DATA_LAKE:\s*\[(.*?)\]", response, re.IGNORECASE)
-        if data_lake_match and data_lake_match.group(1).strip():
-            with contextlib.suppress(ValueError):
-                selected_indices["data_lake"] = [
-                    int(idx.strip()) for idx in data_lake_match.group(1).split(",") if idx.strip()
-                ]
+        if data_lake_match:
+            if data_lake_match.group(1).strip():
+                try:
+                    selected_indices["data_lake"] = [
+                        int(idx.strip()) for idx in data_lake_match.group(1).split(",") if idx.strip()
+                    ]
+                except ValueError as e:
+                    print(f"WARNING: Failed to parse DATA_LAKE indices: {e}")
+        else:
+            print("WARNING: No DATA_LAKE section found in LLM response")
 
         libraries_match = re.search(r"LIBRARIES:\s*\[(.*?)\]", response, re.IGNORECASE)
-        if libraries_match and libraries_match.group(1).strip():
-            with contextlib.suppress(ValueError):
-                selected_indices["libraries"] = [
-                    int(idx.strip()) for idx in libraries_match.group(1).split(",") if idx.strip()
-                ]
+        if libraries_match:
+            if libraries_match.group(1).strip():
+                try:
+                    selected_indices["libraries"] = [
+                        int(idx.strip()) for idx in libraries_match.group(1).split(",") if idx.strip()
+                    ]
+                except ValueError as e:
+                    print(f"WARNING: Failed to parse LIBRARIES indices: {e}")
+        else:
+            print("WARNING: No LIBRARIES section found in LLM response")
 
+        print(f"DEBUG: Parsed indices - Tools: {len(selected_indices['tools'])}, Data Lake: {len(selected_indices['data_lake'])}, Libraries: {len(selected_indices['libraries'])}")
         return selected_indices

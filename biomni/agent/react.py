@@ -384,8 +384,16 @@ Here is the list of available libraries with their descriptions:
             }
 
             # Use prompt-based retrieval with the agent's LLM
-            selected_resources = self.retriever.prompt_based_retrieval(prompt, resources, llm=self.llm)
+            selected_resources, llm_response = self.retriever.prompt_based_retrieval(prompt, resources, llm=self.llm)
             print("Using prompt-based retrieval with the agent's LLM")
+
+            # Print LLM response for debugging
+            if llm_response:
+                print("\n" + "="*50)
+                print("LLM Selection Response:")
+                print("="*50)
+                print(llm_response.strip())
+                print("="*50)
 
             # If we're using prompt or embedding based retrieval, print the selected resources
             print("\nSelected tools:")
