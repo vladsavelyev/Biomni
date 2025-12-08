@@ -1324,7 +1324,6 @@ Each library is listed with its description to help you understand its functiona
             # IMPORTANT: Implement manual stop sequences since Claude through Bedrock ignores them
             msg = ""
             current_block = {"type": None, "content": "", "start": None, "tag_start": None}
-            planning_sent = False
 
             for chunk in self.llm.stream(messages):
                 if hasattr(chunk, "content"):
@@ -1349,10 +1348,6 @@ Each library is listed with its description to help you understand its functiona
                         planning_text = msg[:current_block["tag_start"]].strip()
                         if planning_text:
                             self._notify_progress("📝 Planning", "thinking", content=planning_text, content_format="markdown")
-                        elif not planning_sent:
-                            # No thinking text, just send status update
-                            self._notify_progress("📝 Planning", "thinking")
-                        planning_sent = True
 
                         # Include the closing tag in the message, then stop
                         # Note: Code will be shown when actually executed in execute() node
@@ -1366,10 +1361,6 @@ Each library is listed with its description to help you understand its functiona
                         planning_text = msg[:current_block["tag_start"]].strip()
                         if planning_text:
                             self._notify_progress("📝 Planning", "thinking", content=planning_text, content_format="markdown")
-                        elif not planning_sent:
-                            # No thinking text, just send status update
-                            self._notify_progress("📝 Planning", "thinking")
-                        planning_sent = True
 
                         # Send notification for the solution
                         sol_content = msg[current_block["start"]:end_idx].strip()
