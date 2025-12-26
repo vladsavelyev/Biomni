@@ -14,3 +14,9 @@ pip install nnunet nibabel nilearn
 pip install mi-googlesearch-python
 pip install git+https://github.com/pylabrobot/pylabrobot.git
 pip install weasyprint
+pip install langchain-aws
+
+# Remove importlib_metadata backport - Python 3.11 has a built-in version.
+# The backport conflicts with transformers' package detection, causing:
+# TypeError: 'NoneType' object is not subscriptable
+pip uninstall -y importlib_metadata || true
