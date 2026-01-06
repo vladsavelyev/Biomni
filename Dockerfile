@@ -9,7 +9,7 @@
 # Single-stage with aggressive cleanup uses less disk during build
 #
 # Build:
-#   docker build ./Biomni/ -t biomni -f Dockerfile.biomni
+#   docker build . -t biomni:latest
 #
 # Usage:
 #   docker run -it biomni:latest
