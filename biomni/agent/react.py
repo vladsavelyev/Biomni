@@ -20,7 +20,11 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 
 from biomni.config import default_config
-from biomni.env_desc import data_lake_dict, library_content_dict
+
+if default_config.commercial_mode:
+    from biomni.env_desc_cm import data_lake_dict, library_content_dict
+else:
+    from biomni.env_desc import data_lake_dict, library_content_dict
 from biomni.llm import get_llm
 from biomni.model.retriever import ToolRetriever
 from biomni.tool.tool_registry import ToolRegistry
@@ -179,6 +183,7 @@ class react:
         data_lake_path = self.path + "/data_lake"
         data_lake_content = glob.glob(data_lake_path + "/*")
         data_lake_items = [x.split("/")[-1] for x in data_lake_content]
+        data_lake_items = [f for f in data_lake_items if f in self.data_lake_dict]
 
         if react_code_search:
             tools = [i for i in self.tools if i.name in ["run_python_repl", "search_google"]]
@@ -360,15 +365,16 @@ Here is the list of available libraries with their descriptions:
             # Gather all available tools from the registry
             all_tools = self.tool_registry.tools if hasattr(self, "tool_registry") else []
 
-            # Get data lake items with descriptions
+            # Get data lake items with descriptions (only files listed in data_lake_dict)
             data_lake_path = self.path + "/data_lake"
             data_lake_content = glob.glob(data_lake_path + "/*")
             data_lake_items = [x.split("/")[-1] for x in data_lake_content]
+            data_lake_items = [f for f in data_lake_items if f in self.data_lake_dict]
 
             # Create data lake descriptions for retrieval
             data_lake_descriptions = []
             for item in data_lake_items:
-                description = self.data_lake_dict.get(item, f"Data lake item: {item}")
+                description = self.data_lake_dict[item]
                 data_lake_descriptions.append({"name": item, "description": description})
 
             # Libraries with descriptions
