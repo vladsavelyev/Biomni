@@ -5,10 +5,12 @@ Simple configuration class for centralizing common settings.
 Maintains full backward compatibility with existing code.
 """
 
+import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+import yaml
 from dotenv import load_dotenv
 
 # Load .env file from the project root if it exists
@@ -63,8 +65,8 @@ class BiomniConfig:
     # LLM source (auto-detected if None)
     source: str | None = None
 
-    # Tool blacklist - list of tool names to exclude from registration
-    tool_blacklist: list[str] | None = None
+    # Tool blacklist - loaded from blacklist.yaml
+    tool_blacklist: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Load any environment variable overrides if they exist."""
@@ -92,10 +94,18 @@ class BiomniConfig:
             self.api_key = os.getenv("BIOMNI_CUSTOM_API_KEY")
         if os.getenv("BIOMNI_SOURCE"):
             self.source = os.getenv("BIOMNI_SOURCE")
-        if os.getenv("BIOMNI_TOOL_BLACKLIST"):
-            self.tool_blacklist = [tool.strip() for tool in os.getenv("BIOMNI_TOOL_BLACKLIST").split(",")]
+        self._load_blacklist()
         if os.getenv("BIOMNI_PYTHON_EXEC_MAX_OUTPUT_MB"):
             self.python_exec_max_output_mb = float(os.getenv("BIOMNI_PYTHON_EXEC_MAX_OUTPUT_MB"))
+
+    def _load_blacklist(self) -> None:
+        """Load tool blacklist from blacklist.yaml (project root, 3 levels above this file)."""
+        blacklist_file = Path(__file__).parent.parent.parent / "blacklist.yaml"
+        if not blacklist_file.exists():
+            logging.warning("Blacklist file not found: %s", blacklist_file)
+            return
+        data = yaml.safe_load(blacklist_file.read_text()) or {}
+        self.tool_blacklist = data.get("tools", [])
 
     def to_dict(self) -> dict:
         """Convert config to dictionary for easy access."""
