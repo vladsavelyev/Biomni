@@ -1251,10 +1251,11 @@ Each library is listed with its description to help you understand its functiona
         # Store self_critic for later use
         self.self_critic = self_critic
 
-        # Get data lake content
+        # Get data lake content (only files listed in data_lake_dict are exposed)
         data_lake_path = self.path + "/data_lake"
         data_lake_content = glob.glob(data_lake_path + "/*")
         data_lake_items = [x.split("/")[-1] for x in data_lake_content]
+        data_lake_items = [f for f in data_lake_items if f in self.data_lake_dict]
 
         # data_lake_dict and library_content_dict are already set in __init__
 
@@ -1264,8 +1265,7 @@ Each library is listed with its description to help you understand its functiona
         # Prepare data lake items with descriptions
         data_lake_with_desc = []
         for item in data_lake_items:
-            description = self.data_lake_dict.get(item, f"Data lake item: {item}")
-            data_lake_with_desc.append({"name": item, "description": description})
+            data_lake_with_desc.append({"name": item, "description": self.data_lake_dict[item]})
 
         # Add custom data items if they exist
         if hasattr(self, "_custom_data") and self._custom_data:
@@ -1610,16 +1610,16 @@ Each library is listed with its description to help you understand its functiona
         # 1. Tools from the registry
         all_tools = self.tool_registry.tools if hasattr(self, "tool_registry") else []
 
-        # 2. Data lake items with descriptions
+        # 2. Data lake items with descriptions (only files listed in data_lake_dict)
         data_lake_path = self.path + "/data_lake"
         data_lake_content = glob.glob(data_lake_path + "/*")
         data_lake_items = [x.split("/")[-1] for x in data_lake_content]
+        data_lake_items = [f for f in data_lake_items if f in self.data_lake_dict]
 
         # Create data lake descriptions for retrieval
         data_lake_descriptions = []
         for item in data_lake_items:
-            description = self.data_lake_dict.get(item, f"Data lake item: {item}")
-            data_lake_descriptions.append({"name": item, "description": description})
+            data_lake_descriptions.append({"name": item, "description": self.data_lake_dict[item]})
 
         # Add custom data items to retrieval if they exist
         if hasattr(self, "_custom_data") and self._custom_data:
