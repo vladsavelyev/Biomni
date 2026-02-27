@@ -172,7 +172,8 @@ class A1:
         if expected_data_lake_files is None:
             expected_data_lake_files = list(self.data_lake_dict.keys())
 
-        # Check and download missing data lake files
+        # Only download files listed in data_lake_dict (respects commercial_mode).
+        # In commercial mode, restricted files are never downloaded.
         print("Checking and downloading missing data lake files...")
         check_and_download_s3_files(
             s3_bucket_url="https://biomni-release.s3.amazonaws.com",
@@ -1499,7 +1500,7 @@ Each library is listed with its description to help you understand its functiona
 
                 observation = f"\n<observation>{result}</observation>"
                 self._notify_progress("📋 Execution result", "observation", result)
-                state["messages"].append(AIMessage(content=observation.strip()))
+                state["messages"].append(HumanMessage(content=observation.strip()))
 
             return state
 
