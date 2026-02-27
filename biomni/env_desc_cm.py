@@ -1,16 +1,16 @@
 # Data lake dictionary with detailed descriptions (Commercial Mode - Non-commercial datasets commented out)
 data_lake_dict = {
-    "affinity_capture-ms.parquet": "Protein-protein interactions detected via affinity capture and mass spectrometry.",
-    "affinity_capture-rna.parquet": "Protein-RNA interactions detected by affinity capture.",
-    # "BindingDB_All_202409.tsv": "Measured binding affinities between proteins and small molecules for drug discovery.",  # Requires commercial license
+    # "affinity_capture-ms.parquet": "Protein-protein interactions detected via affinity capture and mass spectrometry.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "affinity_capture-rna.parquet": "Protein-RNA interactions detected by affinity capture.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    "BindingDB_All_202409.tsv": "Measured binding affinities between proteins and small molecules for drug discovery.",  # CC BY 3.0 - attribution required
     "broad_repurposing_hub_molecule_with_smiles.parquet": "Molecules from Broad Institute's Drug Repurposing Hub with SMILES annotations.",
     "broad_repurposing_hub_phase_moa_target_info.parquet": "Drug phases, mechanisms of action, and target information from Broad Institute.",
-    "co-fractionation.parquet": "Protein-protein interactions from co-fractionation experiments.",
+    # "co-fractionation.parquet": "Protein-protein interactions from co-fractionation experiments.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
     "czi_census_datasets_v4.parquet": "Datasets from the Chan Zuckerberg Initiative's Cell Census.",
-    "DepMap_CRISPRGeneDependency.csv": "Gene dependency probability estimates for cancer cell lines, including all DepMap models.",
-    "DepMap_CRISPRGeneEffect.csv": "Genome-wide CRISPR gene effect estimates for cancer cell lines, including all DepMap models.",
-    "DepMap_Model.csv": "Metadata describing all cancer models/cell lines which are referenced by a dataset contained within the DepMap portal.",
-    "DepMap_OmicsExpressionProteinCodingGenesTPMLogp1.csv": "Gene expression in TPMs for cancer cell lines, including all DepMap models.",
+    # "DepMap_CRISPRGeneDependency.csv": "Gene dependency probability estimates for cancer cell lines, including all DepMap models.",  # No commercial use permitted
+    # "DepMap_CRISPRGeneEffect.csv": "Genome-wide CRISPR gene effect estimates for cancer cell lines, including all DepMap models.",  # No commercial use permitted
+    # "DepMap_Model.csv": "Metadata describing all cancer models/cell lines which are referenced by a dataset contained within the DepMap portal.",  # No commercial use permitted
+    # "DepMap_OmicsExpressionProteinCodingGenesTPMLogp1.csv": "Gene expression in TPMs for cancer cell lines, including all DepMap models.",  # No commercial use permitted
     # "ddinter_alimentary_tract_metabolism.csv": "Drug-drug interactions for alimentary tract and metabolism drugs from DDInter 2.0 database.",  # CC BY-NC-SA 4.0 - Non-commercial only
     # "ddinter_antineoplastic.csv": "Drug-drug interactions for antineoplastic and immunomodulating agents from DDInter 2.0 database.",  # CC BY-NC-SA 4.0 - Non-commercial only
     # "ddinter_antiparasitic.csv": "Drug-drug interactions for antiparasitic products from DDInter 2.0 database.",  # CC BY-NC-SA 4.0 - Non-commercial only
@@ -20,7 +20,7 @@ data_lake_dict = {
     # "ddinter_respiratory.csv": "Drug-drug interactions for respiratory system drugs from DDInter 2.0 database.",  # CC BY-NC-SA 4.0 - Non-commercial only
     # "ddinter_various.csv": "Drug-drug interactions for various drugs from DDInter 2.0 database.",  # CC BY-NC-SA 4.0 - Non-commercial only
     # "DisGeNET.parquet": "Gene-disease associations from multiple sources.",  # CC BY-NC-SA 4.0 - Non-commercial only
-    "dosage_growth_defect.parquet": "Gene dosage changes affecting growth.",
+    # "dosage_growth_defect.parquet": "Gene dosage changes affecting growth.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
     # "enamine_cloud_library_smiles.pkl": "Compounds from Enamine REAL library with SMILES annotations.",  # Proprietary - Requires license
     # "evebio_assay_table.csv": "Assay metadata with one row per assay from EveBio pharmome mapping.",  # Proprietary - Requires permission
     # "evebio_bundle_table.csv": "Target subfamily bundles used for screening-to-profiling progression.",  # Proprietary - Requires permission
@@ -34,24 +34,24 @@ data_lake_dict = {
     "genebass_pLoF_filtered.pkl": "Predicted loss-of-function variants from GeneBass.",
     "genebass_synonymous_filtered.pkl": "Filtered synonymous variants from GeneBass.",
     "gene_info.parquet": "Comprehensive gene information.",
-    "genetic_interaction.parquet": "Genetic interactions between genes.",
+    # "genetic_interaction.parquet": "Genetic interactions between genes.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
     "go-plus.json": "Gene ontology data for functional gene annotations.",
     "gtex_tissue_gene_tpm.parquet": "Gene expression (TPM) across human tissues from GTEx.",
     "gwas_catalog.pkl": "Genome-wide association studies (GWAS) results.",
     "hp.obo": "Official HPO release in obographs format",
-    "kg.csv": "Precision medicine knowledge graph with 17,080 diseases and 4+ million relationships across biological scales.",
-    "marker_celltype.parquet": "Cell type marker genes for identification.",
+    # "kg.csv": "Precision medicine knowledge graph with 17,080 diseases and 4+ million relationships across biological scales.",  # Internal compilation - review license
+    # "marker_celltype.parquet": "Cell type marker genes for identification.",  # Unknown license - verify source
     # "McPAS-TCR.parquet": "T-cell receptor sequences and specificity data from McPAS database.",  # CC BY-NC-SA 4.0 - Non-commercial only
     # "miRDB_v6.0_results.parquet": "Predicted microRNA targets from miRDB.",  # Non-commercial use only
     # "miRTarBase_microRNA_target_interaction.parquet": "Experimentally validated microRNA-target interactions from miRTarBase.",  # CC BY-NC 4.0 - Non-commercial only
     # "miRTarBase_microRNA_target_interaction_pubmed_abtract.txt": "PubMed abstracts for microRNA-target interactions in miRTarBase.",  # CC BY-NC 4.0 - Non-commercial only
     # "miRTarBase_MicroRNA_Target_Sites.parquet": "Binding sites of microRNAs on target genes from miRTarBase.",  # CC BY-NC 4.0 - Non-commercial only
-    "mousemine_m1_positional_geneset.parquet": "Positional gene sets from MouseMine.",
-    "mousemine_m2_curated_geneset.parquet": "Curated gene sets from MouseMine.",
-    "mousemine_m3_regulatory_target_geneset.parquet": "Regulatory target gene sets from MouseMine.",
-    "mousemine_m5_ontology_geneset.parquet": "Ontology-based gene sets from MouseMine.",
-    "mousemine_m8_celltype_signature_geneset.parquet": "Cell type signature gene sets from MouseMine.",
-    "mousemine_mh_hallmark_geneset.parquet": "Hallmark gene sets from MouseMine.",
+    # "mousemine_m1_positional_geneset.parquet": "Positional gene sets from MouseMine.",  # License unclear
+    # "mousemine_m2_curated_geneset.parquet": "Curated gene sets from MouseMine.",  # License unclear
+    # "mousemine_m3_regulatory_target_geneset.parquet": "Regulatory target gene sets from MouseMine.",  # License unclear
+    # "mousemine_m5_ontology_geneset.parquet": "Ontology-based gene sets from MouseMine.",  # License unclear
+    # "mousemine_m8_celltype_signature_geneset.parquet": "Cell type signature gene sets from MouseMine.",  # License unclear
+    # "mousemine_mh_hallmark_geneset.parquet": "Hallmark gene sets from MouseMine.",  # License unclear
     # "msigdb_human_c1_positional_geneset.parquet": "Human positional gene sets from MSigDB.",  # Requires commercial license
     # "msigdb_human_c2_curated_geneset.parquet": "Curated human gene sets from MSigDB.",  # Requires commercial license
     # "msigdb_human_c3_regulatory_target_geneset.parquet": "Regulatory target gene sets from MSigDB.",  # Requires commercial license
@@ -64,16 +64,16 @@ data_lake_dict = {
     # "msigdb_human_h_hallmark_geneset.parquet": "Hallmark gene sets from MSigDB.",  # Requires commercial license
     # "omim.parquet": "Genetic disorders and associated genes from OMIM.",  # Requires commercial license
     "proteinatlas.tsv": "Protein expression data from Human Protein Atlas.",
-    "proximity_label-ms.parquet": "Protein interactions via proximity labeling and mass spectrometry.",
-    "reconstituted_complex.parquet": "Protein complexes reconstituted in vitro.",
-    "sgRNA_KO_SP_mouse.txt": "sgRNA knockout data for mouse.",
-    "sgRNA_KO_SP_human.txt": "sgRNA knockout data for human.",
-    "synthetic_growth_defect.parquet": "Synthetic growth defects from genetic interactions.",
-    "synthetic_lethality.parquet": "Synthetic lethal interactions.",
-    "synthetic_rescue.parquet": "Genetic interactions rescuing phenotypes.",
-    "two-hybrid.parquet": "Protein-protein interactions detected by yeast two-hybrid assays.",
-    "variant_table.parquet": "Annotated genetic variants table.",
-    "Virus-Host_PPI_P-HIPSTER_2020.parquet": "Virus-host protein-protein interactions from P-HIPSTER.",
+    # "proximity_label-ms.parquet": "Protein interactions via proximity labeling and mass spectrometry.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "reconstituted_complex.parquet": "Protein complexes reconstituted in vitro.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "sgRNA_KO_SP_mouse.txt": "sgRNA knockout data for mouse.",  # Unknown license
+    # "sgRNA_KO_SP_human.txt": "sgRNA knockout data for human.",  # Unknown license
+    # "synthetic_growth_defect.parquet": "Synthetic growth defects from genetic interactions.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "synthetic_lethality.parquet": "Synthetic lethal interactions.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "synthetic_rescue.parquet": "Genetic interactions rescuing phenotypes.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "two-hybrid.parquet": "Protein-protein interactions detected by yeast two-hybrid assays.",  # Likely BioGRID CC BY-NC-SA 3.0 - verify provenance
+    # "variant_table.parquet": "Annotated genetic variants table.",  # Depends on inputs - review license
+    # "Virus-Host_PPI_P-HIPSTER_2020.parquet": "Virus-host protein-protein interactions from P-HIPSTER.",  # Unknown license
     "txgnn_name_mapping.pkl": "Name mapping for TXGNN.",
     "txgnn_prediction.pkl": "Prediction data for TXGNN.",
 }
