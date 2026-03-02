@@ -201,7 +201,7 @@ def get_llm(
     elif source == "Bedrock":
         try:
             import boto3
-            from langchain_aws import ChatBedrock
+            from langchain_aws import ChatBedrockConverse
             from botocore.config import Config
         except ImportError:
             raise ImportError(  # noqa: B904
@@ -228,7 +228,7 @@ def get_llm(
         if aws_profile:
             session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
             bedrock_client = session.client('bedrock-runtime', config=boto_config)
-            return ChatBedrock(
+            return ChatBedrockConverse(
                 client=bedrock_client,
                 model=bedrock_model,
                 temperature=temperature,
@@ -236,7 +236,7 @@ def get_llm(
                 stop_sequences=stop_sequences,
             )
         else:
-            return ChatBedrock(
+            return ChatBedrockConverse(
                 model=bedrock_model,
                 temperature=temperature,
                 max_tokens=max_tokens,
