@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, Optional
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -8,6 +9,13 @@ if TYPE_CHECKING:
 
 SourceType = Literal["OpenAI", "AzureOpenAI", "Anthropic", "Ollama", "Gemini", "Bedrock", "Groq", "Custom"]
 ALLOWED_SOURCES: set[str] = set(SourceType.__args__)
+
+_bedrock_client_factory: Callable | None = None
+
+
+def set_bedrock_client_factory(factory: Callable | None):
+    global _bedrock_client_factory
+    _bedrock_client_factory = factory
 
 
 def get_llm(
@@ -20,6 +28,7 @@ def get_llm(
     max_tokens: int | None = None,
     llm_timeout: int | None = None,
     config: Optional["BiomniConfig"] = None,
+    bedrock_client_factory: Callable | None = None,
 ) -> BaseChatModel:
     """
     Get a language model instance based on the specified model name and source.
@@ -201,49 +210,33 @@ def get_llm(
     elif source == "Bedrock":
         try:
             import boto3
-            from langchain_aws import ChatBedrockConverse
             from botocore.config import Config
+            from langchain_aws import ChatBedrockConverse
         except ImportError:
             raise ImportError(  # noqa: B904
                 "langchain-aws package is required for Bedrock models. Install with: pip install langchain-aws"
             )
-
-        # Configure longer timeouts for large token generation
-        # Connect timeout: time to establish connection (default 60s)
-        # Read timeout: time to receive response (configurable, default 300s)
         boto_config = Config(
             connect_timeout=60,
             read_timeout=llm_timeout,
             retries={'max_attempts': 3, 'mode': 'standard'}
         )
-
-        # Respect AWS_PROFILE if set
-        aws_profile = os.getenv("AWS_PROFILE")
-        aws_region = os.getenv("AWS_REGION", "us-east-1")
-
-        # Use BEDROCK_MODEL_NAME if set
         bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
-
-        # Create boto3 session with profile if specified
-        if aws_profile:
-            session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
-            bedrock_client = session.client('bedrock-runtime', config=boto_config)
-            return ChatBedrockConverse(
-                client=bedrock_client,
-                model=bedrock_model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stop_sequences=stop_sequences,
-            )
+        factory = bedrock_client_factory or _bedrock_client_factory
+        if factory:
+            bedrock_client = factory(config=boto_config)
         else:
-            return ChatBedrockConverse(
-                model=bedrock_model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stop_sequences=stop_sequences,
-                region_name=aws_region,
-                config=boto_config,
-            )
+            aws_profile = os.getenv("AWS_PROFILE")
+            aws_region = os.getenv("AWS_REGION", "us-east-1")
+            session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
+            bedrock_client = session.client("bedrock-runtime", config=boto_config)
+        return ChatBedrockConverse(
+            client=bedrock_client,
+            model=bedrock_model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stop_sequences=stop_sequences,
+        )
 
     elif source == "Custom":
         try:
