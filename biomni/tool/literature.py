@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -8,6 +9,14 @@ import PyPDF2
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
+
+
+_bedrock_client_factory = None
+
+
+def set_bedrock_client_factory(factory):
+    global _bedrock_client_factory
+    _bedrock_client_factory = factory
 
 
 def fetch_supplementary_info_from_doi(doi: str, output_dir: str = "supplementary_info"):
@@ -283,41 +292,11 @@ def advanced_web_search_claude(
     """
     import random
 
-    import anthropic
-
     model = os.environ["BIOMNI_LLM"]
     if "claude" not in model:
         raise ValueError("Model must be a Claude model.")
 
-    # Detect if we should use Bedrock based on model name prefix or environment
     use_bedrock = os.environ["BIOMNI_SOURCE"] == "Bedrock"
-
-    if use_bedrock:
-        # Use AWS Bedrock
-        aws_profile = os.getenv("AWS_PROFILE")
-        aws_region = os.getenv("AWS_REGION", "us-east-1")
-        bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
-
-        client = anthropic.AnthropicBedrock(
-            aws_region=aws_region,
-            aws_profile=aws_profile,
-        )
-        model = bedrock_model
-    else:
-        # Use direct Anthropic API
-        try:
-            from biomni.config import default_config
-
-            api_key = default_config.api_key
-            if not api_key:
-                api_key = os.getenv("ANTHROPIC_API_KEY")
-        except ImportError:
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-
-        if not api_key:
-            raise ValueError("Set your ANTHROPIC_API_KEY or configure AWS Bedrock (AWS_PROFILE/AWS_REGION).")
-
-        client = anthropic.Anthropic(api_key=api_key)
 
     tool_def = {
         "type": "web_search_20250305",
@@ -329,25 +308,84 @@ def advanced_web_search_claude(
 
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": query}],
-                tools=[tool_def],
-            )
+            if use_bedrock and _bedrock_client_factory:
+                bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
+                client = _bedrock_client_factory()
+                body = json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": query}],
+                    "tools": [tool_def],
+                })
+                response = client.invoke_model(modelId=bedrock_model, body=body)
+                result = json.loads(response["body"].read())
+                content = result["content"]
+            elif use_bedrock:
+                import anthropic  # noqa: PLC0415
 
-            paragraphs, citations = [], []
-            response.content = response.content
+                aws_profile = os.getenv("AWS_PROFILE")
+                aws_region = os.getenv("AWS_REGION", "us-east-1")
+                bedrock_model = os.getenv("BEDROCK_MODEL_NAME", model)
+                client = anthropic.AnthropicBedrock(
+                    aws_region=aws_region,
+                    aws_profile=aws_profile,
+                )
+                response = client.messages.create(
+                    model=bedrock_model,
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": query}],
+                    tools=[tool_def],
+                )
+                content = [
+                    {
+                        "type": blk.type,
+                        "text": getattr(blk, "text", None),
+                        "citations": [
+                            {"url": c.url, "title": c.title, "cited_text": c.cited_text}
+                            for c in (blk.citations or [])
+                        ] if hasattr(blk, "citations") and blk.citations else None,
+                    }
+                    for blk in response.content
+                ]
+            else:
+                import anthropic  # noqa: PLC0415
+
+                try:
+                    from biomni.config import default_config  # noqa: PLC0415
+                    api_key = default_config.api_key
+                    if not api_key:
+                        api_key = os.getenv("ANTHROPIC_API_KEY")
+                except ImportError:
+                    api_key = os.getenv("ANTHROPIC_API_KEY")
+                if not api_key:
+                    raise ValueError("Set your ANTHROPIC_API_KEY or configure AWS Bedrock (AWS_PROFILE/AWS_REGION).")
+
+                client = anthropic.Anthropic(api_key=api_key)
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": query}],
+                    tools=[tool_def],
+                )
+                content = [
+                    {
+                        "type": blk.type,
+                        "text": getattr(blk, "text", None),
+                        "citations": [
+                            {"url": c.url, "title": c.title, "cited_text": c.cited_text}
+                            for c in (blk.citations or [])
+                        ] if hasattr(blk, "citations") and blk.citations else None,
+                    }
+                    for blk in response.content
+                ]
+
             formatted_response = ""
-            for blk in response.content:
-                if blk.type == "text":
-                    paragraphs.append(blk.text)
-                    formatted_response += blk.text
-
-                    if blk.citations:
-                        for cite in blk.citations:
-                            citations.append({"url": cite.url, "title": cite.title, "cited_text": cite.cited_text})
-                            formatted_response += f"(Citation: {cite.title} - {cite.url})"
+            for blk in content:
+                if blk["type"] == "text":
+                    formatted_response += blk["text"]
+                    if blk.get("citations"):
+                        for cite in blk["citations"]:
+                            formatted_response += f"(Citation: {cite['title']} - {cite['url']})"
             return formatted_response
 
         except Exception as e:

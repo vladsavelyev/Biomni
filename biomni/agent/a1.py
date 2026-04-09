@@ -72,6 +72,7 @@ class A1:
         commercial_mode: bool | None = None,
         expected_data_lake_files: list | None = None,
         progress_callback: typing.Callable | None = None,
+        bedrock_client_factory: typing.Callable | None = None,
     ):
         """Initialize the biomni agent.
 
@@ -208,6 +209,7 @@ class A1:
             base_url=base_url,
             api_key=api_key,
             config=default_config,
+            bedrock_client_factory=bedrock_client_factory,
         )
         self.module2api = module2api
         self.use_tool_retriever = use_tool_retriever
@@ -1328,7 +1330,14 @@ Each library is listed with its description to help you understand its functiona
 
             for chunk in self.llm.stream(messages):
                 if hasattr(chunk, "content"):
-                    chunk_text = str(chunk.content)
+                    content = chunk.content
+                    if isinstance(content, list):
+                        chunk_text = "".join(
+                            block.get("text", "") if isinstance(block, dict) else str(block)
+                            for block in content
+                        )
+                    else:
+                        chunk_text = str(content)
                     msg += chunk_text
 
                     # Check for block start tags
